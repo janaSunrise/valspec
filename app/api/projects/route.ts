@@ -11,7 +11,7 @@ function slugify(text: string): string {
 
 export async function GET() {
   const session = await getSession();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -19,6 +19,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('projects')
     .select('*, environments(count)')
+    .eq('user_id', session.user.id)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -30,11 +31,17 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
   const { name, description } = body;
 
   if (!name || typeof name !== 'string') {
@@ -48,17 +55,25 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createServerSupabaseClient();
 
-  // Check if slug already exists
-  const { data: existing } = await supabase.from('projects').select('id').eq('slug', slug).single();
+  const { data: existing } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('user_id', session.user.id)
+    .eq('slug', slug)
+    .single();
 
   if (existing) {
     return NextResponse.json({ error: 'Project with this name already exists' }, { status: 409 });
   }
 
-  // Create project
   const { data: project, error: projectError } = await supabase
     .from('projects')
-    .insert({ name, slug, description: description || null })
+    .insert({
+      name,
+      slug,
+      description: description || null,
+      user_id: session.user.id,
+    })
     .select()
     .single();
 

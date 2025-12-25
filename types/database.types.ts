@@ -28,6 +28,62 @@ export type Database = {
   };
   public: {
     Tables: {
+      account: {
+        Row: {
+          accessToken: string | null;
+          accessTokenExpiresAt: string | null;
+          accountId: string;
+          createdAt: string;
+          id: string;
+          idToken: string | null;
+          password: string | null;
+          providerId: string;
+          refreshToken: string | null;
+          refreshTokenExpiresAt: string | null;
+          scope: string | null;
+          updatedAt: string;
+          userId: string;
+        };
+        Insert: {
+          accessToken?: string | null;
+          accessTokenExpiresAt?: string | null;
+          accountId: string;
+          createdAt?: string;
+          id: string;
+          idToken?: string | null;
+          password?: string | null;
+          providerId: string;
+          refreshToken?: string | null;
+          refreshTokenExpiresAt?: string | null;
+          scope?: string | null;
+          updatedAt: string;
+          userId: string;
+        };
+        Update: {
+          accessToken?: string | null;
+          accessTokenExpiresAt?: string | null;
+          accountId?: string;
+          createdAt?: string;
+          id?: string;
+          idToken?: string | null;
+          password?: string | null;
+          providerId?: string;
+          refreshToken?: string | null;
+          refreshTokenExpiresAt?: string | null;
+          scope?: string | null;
+          updatedAt?: string;
+          userId?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'account_userId_fkey';
+            columns: ['userId'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       api_keys: {
         Row: {
           created_at: string | null;
@@ -198,6 +254,7 @@ export type Database = {
           name: string;
           slug: string;
           updated_at: string | null;
+          user_id: string;
         };
         Insert: {
           created_at?: string | null;
@@ -206,6 +263,7 @@ export type Database = {
           name: string;
           slug: string;
           updated_at?: string | null;
+          user_id: string;
         };
         Update: {
           created_at?: string | null;
@@ -214,6 +272,7 @@ export type Database = {
           name?: string;
           slug?: string;
           updated_at?: string | null;
+          user_id?: string;
         };
         Relationships: [];
       };
@@ -304,6 +363,104 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      session: {
+        Row: {
+          createdAt: string;
+          expiresAt: string;
+          id: string;
+          ipAddress: string | null;
+          token: string;
+          updatedAt: string;
+          userAgent: string | null;
+          userId: string;
+        };
+        Insert: {
+          createdAt?: string;
+          expiresAt: string;
+          id: string;
+          ipAddress?: string | null;
+          token: string;
+          updatedAt: string;
+          userAgent?: string | null;
+          userId: string;
+        };
+        Update: {
+          createdAt?: string;
+          expiresAt?: string;
+          id?: string;
+          ipAddress?: string | null;
+          token?: string;
+          updatedAt?: string;
+          userAgent?: string | null;
+          userId?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'session_userId_fkey';
+            columns: ['userId'];
+            isOneToOne: false;
+            referencedRelation: 'user';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      user: {
+        Row: {
+          createdAt: string;
+          email: string;
+          emailVerified: boolean;
+          id: string;
+          image: string | null;
+          name: string;
+          updatedAt: string;
+        };
+        Insert: {
+          createdAt?: string;
+          email: string;
+          emailVerified: boolean;
+          id: string;
+          image?: string | null;
+          name: string;
+          updatedAt?: string;
+        };
+        Update: {
+          createdAt?: string;
+          email?: string;
+          emailVerified?: boolean;
+          id?: string;
+          image?: string | null;
+          name?: string;
+          updatedAt?: string;
+        };
+        Relationships: [];
+      };
+      verification: {
+        Row: {
+          createdAt: string;
+          expiresAt: string;
+          id: string;
+          identifier: string;
+          updatedAt: string;
+          value: string;
+        };
+        Insert: {
+          createdAt?: string;
+          expiresAt: string;
+          id: string;
+          identifier: string;
+          updatedAt?: string;
+          value: string;
+        };
+        Update: {
+          createdAt?: string;
+          expiresAt?: string;
+          id?: string;
+          identifier?: string;
+          updatedAt?: string;
+          value?: string;
+        };
+        Relationships: [];
       };
     };
     Views: {

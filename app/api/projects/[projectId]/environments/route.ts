@@ -13,12 +13,23 @@ function slugify(text: string): string {
 
 export async function GET(_request: NextRequest, { params }: { params: Params }) {
   const session = await getSession();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { projectId } = await params;
   const supabase = await createServerSupabaseClient();
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('user_id', session.user.id)
+    .single();
+
+  if (!project) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  }
 
   const { data, error } = await supabase
     .from('environments')
@@ -35,12 +46,19 @@ export async function GET(_request: NextRequest, { params }: { params: Params })
 
 export async function POST(request: NextRequest, { params }: { params: Params }) {
   const session = await getSession();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { projectId } = await params;
-  const body = await request.json();
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
   const { name, color, inherits_from_id } = body;
 
   if (!name || typeof name !== 'string') {
@@ -54,11 +72,11 @@ export async function POST(request: NextRequest, { params }: { params: Params })
 
   const supabase = await createServerSupabaseClient();
 
-  // Verify project exists
   const { data: project } = await supabase
     .from('projects')
     .select('id')
     .eq('id', projectId)
+    .eq('user_id', session.user.id)
     .single();
 
   if (!project) {

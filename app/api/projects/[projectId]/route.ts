@@ -13,7 +13,7 @@ function slugify(text: string): string {
 
 export async function GET(_request: NextRequest, { params }: { params: Params }) {
   const session = await getSession();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -24,6 +24,7 @@ export async function GET(_request: NextRequest, { params }: { params: Params })
     .from('projects')
     .select('*, environments(*)')
     .eq('id', projectId)
+    .eq('user_id', session.user.id)
     .single();
 
   if (error) {
@@ -38,12 +39,19 @@ export async function GET(_request: NextRequest, { params }: { params: Params })
 
 export async function PATCH(request: NextRequest, { params }: { params: Params }) {
   const session = await getSession();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { projectId } = await params;
-  const body = await request.json();
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
   const { name, description } = body;
 
   const supabase = await createServerSupabaseClient();
@@ -54,10 +62,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     updates.name = name;
     updates.slug = slugify(name);
 
-    // Check if new slug conflicts with existing project
+    // Check if new slug conflicts with existing project for this user
     const { data: existing } = await supabase
       .from('projects')
       .select('id')
+      .eq('user_id', session.user.id)
       .eq('slug', updates.slug)
       .neq('id', projectId)
       .single();
@@ -79,6 +88,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     .from('projects')
     .update(updates)
     .eq('id', projectId)
+    .eq('user_id', session.user.id)
     .select()
     .single();
 
@@ -94,14 +104,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Params }) {
   const session = await getSession();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { projectId } = await params;
   const supabase = await createServerSupabaseClient();
 
-  const { error } = await supabase.from('projects').delete().eq('id', projectId);
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', projectId)
+    .eq('user_id', session.user.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

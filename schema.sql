@@ -1,12 +1,16 @@
 CREATE TABLE IF NOT EXISTS projects (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
   name TEXT NOT NULL,
-  slug TEXT NOT NULL UNIQUE,
+  slug TEXT NOT NULL,
   description TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  UNIQUE(user_id, slug)
 );
 
+CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_projects_slug ON projects(slug);
 
 CREATE TABLE IF NOT EXISTS environments (

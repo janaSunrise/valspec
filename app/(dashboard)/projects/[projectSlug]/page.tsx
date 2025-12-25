@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/db';
+import { getUser } from '@/lib/auth';
 import { EnvironmentTabs } from '@/components/projects/environment-tabs';
 import { ProjectActions } from '@/components/projects/project-actions';
 import { CreateEnvironmentDialog } from '@/components/projects/create-environment-dialog';
@@ -10,12 +11,17 @@ type Params = Promise<{ projectSlug: string }>;
 
 export default async function ProjectPage({ params }: { params: Params }) {
   const { projectSlug } = await params;
+  const user = await getUser();
+
+  if (!user) return null;
+
   const supabase = await createServerSupabaseClient();
 
   const { data: project } = await supabase
     .from('projects')
     .select('*, environments(*)')
     .eq('slug', projectSlug)
+    .eq('user_id', user.id)
     .single();
 
   if (!project) {

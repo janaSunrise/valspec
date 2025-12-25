@@ -13,12 +13,23 @@ function slugify(text: string): string {
 
 export async function GET(_request: NextRequest, { params }: { params: Params }) {
   const session = await getSession();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { projectId, envId } = await params;
   const supabase = await createServerSupabaseClient();
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('user_id', session.user.id)
+    .single();
+
+  if (!project) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  }
 
   const { data, error } = await supabase
     .from('environments')
@@ -39,15 +50,33 @@ export async function GET(_request: NextRequest, { params }: { params: Params })
 
 export async function PATCH(request: NextRequest, { params }: { params: Params }) {
   const session = await getSession();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { projectId, envId } = await params;
-  const body = await request.json();
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
   const { name, color, inherits_from_id } = body;
 
   const supabase = await createServerSupabaseClient();
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('user_id', session.user.id)
+    .single();
+
+  if (!project) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  }
 
   const updates: {
     name?: string;
@@ -60,7 +89,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     updates.name = name;
     updates.slug = slugify(name);
 
-    // Check for duplicate slug
     const { data: existing } = await supabase
       .from('environments')
       .select('id')
@@ -147,12 +175,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Params }) {
   const session = await getSession();
-  if (!session) {
+  if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { projectId, envId } = await params;
   const supabase = await createServerSupabaseClient();
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('user_id', session.user.id)
+    .single();
+
+  if (!project) {
+    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  }
 
   // Check if other environments inherit from this one
   const { data: dependents } = await supabase

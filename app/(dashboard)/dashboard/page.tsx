@@ -5,11 +5,15 @@ import { CreateProjectDialog } from '@/components/projects/create-project-dialog
 
 export default async function DashboardPage() {
   const user = await getUser();
+
+  if (!user) return null;
+
   const supabase = await createServerSupabaseClient();
 
   const { data: projects } = await supabase
     .from('projects')
     .select('*, environments(count)')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   return (
