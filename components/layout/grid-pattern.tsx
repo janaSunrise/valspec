@@ -11,7 +11,7 @@ export function GridPattern() {
           backgroundSize: '64px 64px',
         }}
       />
-      <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
+      <div className="absolute left-1/2 top-0 h-125 w-200 -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
     </div>
   );
 }

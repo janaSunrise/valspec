@@ -5,9 +5,9 @@ const IV_LENGTH = 12; // 96 bits for GCM
 const AUTH_TAG_LENGTH = 16; // 128 bits
 
 export interface EncryptedData {
-  encryptedValue: string; // Base64
-  iv: string; // Base64
-  authTag: string; // Base64
+  encryptedValue: string;
+  iv: string;
+  authTag: string;
 }
 
 export class CryptoError extends Error {

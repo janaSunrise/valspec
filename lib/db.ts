@@ -1,5 +1,6 @@
-import { createBrowserClient, createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+
+import { createBrowserClient, createServerClient } from '@supabase/ssr';
 
 import type { Database } from '@/types/database.types';
 
