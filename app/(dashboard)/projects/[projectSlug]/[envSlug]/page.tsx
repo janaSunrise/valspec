@@ -1,13 +1,14 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/db';
 import { getUser } from '@/lib/auth';
 import { EnvironmentTabs } from '@/components/projects/environment-tabs';
 import { ProjectActions } from '@/components/projects/project-actions';
 import { EnvironmentActions } from '@/components/projects/environment-actions';
 import { CreateEnvironmentDialog } from '@/components/projects/create-environment-dialog';
-import { ArrowLeft, Plus } from 'lucide-react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { SecretsTable } from '@/components/secrets/secrets-table';
+import { resolveSecrets } from '@/lib/secrets/inheritance';
 
 type Params = Promise<{ projectSlug: string; envSlug: string }>;
 
@@ -23,7 +24,7 @@ export default async function EnvironmentPage({ params }: { params: Params }) {
     .from('projects')
     .select('*, environments(*)')
     .eq('slug', projectSlug)
-    .eq('user_id', user?.id)
+    .eq('user_id', user.id)
     .single();
 
   if (!project) {
@@ -39,12 +40,15 @@ export default async function EnvironmentPage({ params }: { params: Params }) {
     notFound();
   }
 
-  // Get secrets for this environment
-  const { data: secrets } = await supabase
+  // Get all secrets for all environments in the project (for inheritance resolution)
+  const envIds = environments.map((e) => e.id);
+  const { data: allSecrets } = await supabase
     .from('secrets')
     .select('*')
-    .eq('environment_id', currentEnv.id)
-    .order('key', { ascending: true });
+    .in('environment_id', envIds);
+
+  // Resolve secrets with inheritance
+  const resolvedSecrets = resolveSecrets(currentEnv.id, environments, allSecrets || []);
 
   // Find inherited environment if any
   const inheritedEnv = currentEnv.inherits_from_id
@@ -86,53 +90,24 @@ export default async function EnvironmentPage({ params }: { params: Params }) {
       />
 
       <div className="mt-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span
-              className="size-2 rounded-full"
-              style={{ backgroundColor: currentEnv.color || '#6366f1' }}
-            />
-            <span className="text-sm font-medium">{currentEnv.name}</span>
-            {inheritedEnv && (
-              <span className="text-xs text-muted-foreground">
-                inherits from {inheritedEnv.name}
-              </span>
-            )}
-            <EnvironmentActions
-              projectId={project.id}
-              projectSlug={projectSlug}
-              environment={currentEnv}
-              environments={environments}
-            />
-          </div>
-          <Button size="sm">
-            <Plus className="mr-1.5 size-4" />
-            Add secret
-          </Button>
+        <div className="mb-4 flex items-center gap-2">
+          <span
+            className="size-2 rounded-full"
+            style={{ backgroundColor: currentEnv.color || '#6366f1' }}
+          />
+          <span className="text-sm font-medium">{currentEnv.name}</span>
+          {inheritedEnv && (
+            <span className="text-xs text-muted-foreground">inherits from {inheritedEnv.name}</span>
+          )}
+          <EnvironmentActions
+            projectId={project.id}
+            projectSlug={projectSlug}
+            environment={currentEnv}
+            environments={environments}
+          />
         </div>
 
-        {secrets && secrets.length > 0 ? (
-          <div className="rounded-lg border border-border">
-            {secrets.map((secret, i) => (
-              <div
-                key={secret.id}
-                className={`flex items-center justify-between px-4 py-3 ${
-                  i !== secrets.length - 1 ? 'border-b border-border' : ''
-                }`}
-              >
-                <code className="text-sm font-medium">{secret.key}</code>
-                <span className="text-sm text-muted-foreground">{'•'.repeat(16)}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-dashed border-border p-12 text-center">
-            <p className="text-sm text-muted-foreground">No secrets yet</p>
-            <p className="mt-1 text-xs text-muted-foreground/60">
-              Add your first secret to this environment
-            </p>
-          </div>
-        )}
+        <SecretsTable secrets={resolvedSecrets} projectId={project.id} envId={currentEnv.id} />
       </div>
     </div>
   );
