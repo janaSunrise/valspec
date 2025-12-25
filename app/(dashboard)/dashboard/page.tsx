@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/db';
+import { FolderOpen } from 'lucide-react';
 import { getUser } from '@/lib/auth';
 import { ProjectCard } from '@/components/projects/project-card';
 import { CreateProjectDialog } from '@/components/projects/create-project-dialog';
@@ -19,12 +20,7 @@ export default async function DashboardPage() {
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-medium">Projects</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Welcome back, {user?.name || 'there'}
-          </p>
-        </div>
+        <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
         <CreateProjectDialog />
       </div>
 
@@ -35,11 +31,17 @@ export default async function DashboardPage() {
           ))}
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed border-border p-12 text-center">
-          <p className="text-sm text-muted-foreground">No projects yet</p>
-          <p className="mt-1 text-xs text-muted-foreground/60">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 px-6 py-16">
+          <div className="flex size-12 items-center justify-center rounded-full bg-muted ring-1 ring-border">
+            <FolderOpen className="size-5 text-muted-foreground" />
+          </div>
+          <p className="mt-4 text-sm font-medium">No projects yet</p>
+          <p className="mt-1.5 text-center text-xs text-muted-foreground">
             Create your first project to start managing secrets
           </p>
+          <div className="mt-6">
+            <CreateProjectDialog />
+          </div>
         </div>
       )}
     </div>

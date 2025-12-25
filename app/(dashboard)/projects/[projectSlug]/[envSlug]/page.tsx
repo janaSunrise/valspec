@@ -1,12 +1,11 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, GitFork } from 'lucide-react';
 import { createServerSupabaseClient } from '@/lib/db';
 import { getUser } from '@/lib/auth';
 import { EnvironmentTabs } from '@/components/projects/environment-tabs';
 import { ProjectActions } from '@/components/projects/project-actions';
 import { EnvironmentActions } from '@/components/projects/environment-actions';
-import { CreateEnvironmentDialog } from '@/components/projects/create-environment-dialog';
 import { SecretsTable } from '@/components/secrets/secrets-table';
 import { resolveSecrets } from '@/lib/secrets/inheritance';
 
@@ -56,59 +55,67 @@ export default async function EnvironmentPage({ params }: { params: Params }) {
     : null;
 
   return (
-    <div>
-      <div className="mb-6">
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
         <Link
           href="/dashboard"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="size-4" />
-          Back to projects
+          <ArrowLeft className="size-3.5" />
+          Projects
         </Link>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-medium">{project.name}</h1>
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
+              <span className="text-xl text-muted-foreground/50">/</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className="size-2.5 rounded-full ring-2 ring-background"
+                  style={{ backgroundColor: currentEnv.color || '#6366f1' }}
+                />
+                <span className="text-xl font-medium text-foreground/70">{currentEnv.name}</span>
+              </div>
+            </div>
             {project.description && (
-              <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>
+              <p className="text-sm text-muted-foreground">{project.description}</p>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <CreateEnvironmentDialog
-              projectId={project.id}
-              projectSlug={projectSlug}
-              environments={environments}
-            />
-            <ProjectActions project={project} />
-          </div>
+          <ProjectActions project={project} />
         </div>
       </div>
 
-      <EnvironmentTabs
-        projectSlug={projectSlug}
-        environments={environments}
-        activeEnvSlug={envSlug}
-      />
-
-      <div className="mt-6">
-        <div className="mb-4 flex items-center gap-2">
-          <span
-            className="size-2 rounded-full"
-            style={{ backgroundColor: currentEnv.color || '#6366f1' }}
-          />
-          <span className="text-sm font-medium">{currentEnv.name}</span>
-          {inheritedEnv && (
-            <span className="text-xs text-muted-foreground">inherits from {inheritedEnv.name}</span>
-          )}
-          <EnvironmentActions
+      {/* Environment Bar */}
+      <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 px-4 py-3">
+        <div className="flex items-center gap-4">
+          <EnvironmentTabs
             projectId={project.id}
             projectSlug={projectSlug}
-            environment={currentEnv}
             environments={environments}
+            activeEnvSlug={envSlug}
           />
+          {inheritedEnv && (
+            <div className="flex items-center gap-1.5 border-l border-border pl-4 text-xs text-muted-foreground">
+              <GitFork className="size-3" />
+              <span>
+                Inherits from{' '}
+                <span className="font-medium text-foreground/80">{inheritedEnv.name}</span>
+              </span>
+            </div>
+          )}
         </div>
-
-        <SecretsTable secrets={resolvedSecrets} projectId={project.id} envId={currentEnv.id} />
+        <EnvironmentActions
+          projectId={project.id}
+          projectSlug={projectSlug}
+          environment={currentEnv}
+          environments={environments}
+        />
       </div>
+
+      {/* Secrets */}
+      <SecretsTable secrets={resolvedSecrets} projectId={project.id} envId={currentEnv.id} />
     </div>
   );
 }

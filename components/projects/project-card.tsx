@@ -1,5 +1,7 @@
+'use client';
+
 import Link from 'next/link';
-import { Folder } from 'lucide-react';
+import { ChevronRight, Layers } from 'lucide-react';
 import type { Tables } from '@/types/database.types';
 
 type Project = Tables<'projects'> & {
@@ -16,26 +18,29 @@ export function ProjectCard({ project }: ProjectCardProps) {
   return (
     <Link
       href={`/projects/${project.slug}`}
-      className="group block rounded-lg border border-border bg-card p-4 transition-colors hover:bg-muted/50"
+      className="group relative flex flex-col rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:border-border hover:bg-muted/30"
     >
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-md bg-muted">
-            <Folder className="size-4 text-muted-foreground" />
-          </div>
-          <div>
-            <h3 className="font-medium">{project.name}</h3>
-            <p className="text-xs text-muted-foreground">{project.slug}</p>
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-[15px] font-semibold tracking-tight">{project.name}</h3>
+          <p className="mt-1 truncate text-xs text-muted-foreground">{project.slug}</p>
         </div>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground/50 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-foreground" />
       </div>
+
       {project.description && (
-        <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{project.description}</p>
+        <p className="mt-4 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
+          {project.description}
+        </p>
       )}
-      <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-        <span>
-          {envCount} environment{envCount !== 1 ? 's' : ''}
-        </span>
+
+      <div className="mt-auto pt-5">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Layers className="size-3" />
+          <span>
+            {envCount} environment{envCount !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
     </Link>
   );

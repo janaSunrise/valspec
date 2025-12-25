@@ -97,7 +97,7 @@ export function ProjectActions({ project }: ProjectActionsProps) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm">
+          <Button variant="outline" size="sm" className="size-8 p-0">
             <MoreHorizontal className="size-4" />
           </Button>
         </DropdownMenuTrigger>

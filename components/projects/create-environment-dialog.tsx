@@ -28,12 +28,14 @@ interface CreateEnvironmentDialogProps {
   projectId: string;
   projectSlug: string;
   environments: Environment[];
+  trigger?: React.ReactNode;
 }
 
 export function CreateEnvironmentDialog({
   projectId,
   projectSlug,
   environments,
+  trigger,
 }: CreateEnvironmentDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -93,10 +95,14 @@ export function CreateEnvironmentDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Plus className="mr-1.5 size-4" />
-          Add environment
-        </Button>
+        {trigger ? (
+          trigger
+        ) : (
+          <Button variant="outline" size="sm">
+            <Plus className="mr-1.5 size-4" />
+            Add environment
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

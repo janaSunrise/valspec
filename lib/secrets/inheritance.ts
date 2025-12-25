@@ -30,7 +30,6 @@ export function buildInheritanceChain(
 
   while (currentId && depth < maxDepth) {
     if (visited.has(currentId)) {
-      console.warn('Circular inheritance detected in environment chain');
       break;
     }
 
@@ -81,8 +80,4 @@ export function resolveSecrets(
   }
 
   return Array.from(secretMap.values()).sort((a, b) => a.key.localeCompare(b.key));
-}
-
-export function getOwnSecrets(environmentId: string, allSecrets: Secret[]): Secret[] {
-  return allSecrets.filter((s) => s.environment_id === environmentId);
 }

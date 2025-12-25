@@ -8,9 +8,9 @@ interface InheritanceBadgeProps {
 
 export function InheritanceBadge({ sourceName }: InheritanceBadgeProps) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-muted/50 px-2 py-0.5 text-xs text-muted-foreground">
+    <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
       <GitBranch className="size-3" />
-      {sourceName}
+      <span>from {sourceName}</span>
     </span>
   );
 }

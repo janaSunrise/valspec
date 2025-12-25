@@ -1,21 +1,23 @@
+import { headers } from 'next/headers';
 import { betterAuth } from 'better-auth';
 import { Pool } from 'pg';
-import { headers } from 'next/headers';
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
 export const auth = betterAuth({
-  database: new Pool({
-    connectionString: process.env.DATABASE_URL,
-  }),
+  database: pool,
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
   },
   session: {
-    expiresIn: 60 * 60 * 24 * 7, // 7 days
-    updateAge: 60 * 60 * 24, // 1 day
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
     cookieCache: {
       enabled: true,
-      maxAge: 60 * 5, // 5 minutes
+      maxAge: 60 * 5,
     },
   },
 });

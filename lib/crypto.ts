@@ -1,5 +1,5 @@
-const IV_LENGTH = 12; // 96 bits for GCM
-const AUTH_TAG_LENGTH = 128; // 128 bits (in bits for Web Crypto)
+const IV_LENGTH = 12;
+const AUTH_TAG_LENGTH = 128;
 
 export interface EncryptedData {
   encryptedValue: string;
@@ -31,30 +31,32 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-async function getMasterKey(): Promise<CryptoKey> {
-  const key = process.env.SHADE_MASTER_KEY;
+let cachedMasterKey: CryptoKey | null = null;
 
+async function getMasterKey(): Promise<CryptoKey> {
+  if (cachedMasterKey) return cachedMasterKey;
+
+  const key = process.env.SHADE_MASTER_KEY;
   if (!key) {
-    throw new CryptoError(
-      '`SHADE_MASTER_KEY` environment variable is not set. Generate one with: openssl rand -base64 32'
-    );
+    throw new CryptoError('SHADE_MASTER_KEY is not set. Generate with: openssl rand -base64 32');
   }
 
   const keyBytes = base64ToUint8Array(key);
-
   if (keyBytes.length !== 32) {
     throw new CryptoError(
-      `\`SHADE_MASTER_KEY\` must be exactly 32 bytes (256 bits). Current length: ${keyBytes.length} bytes. Generate a valid key with: \`openssl rand -base64 32\``
+      `SHADE_MASTER_KEY must be 32 bytes. Got ${keyBytes.length}. Generate with: openssl rand -base64 32`
     );
   }
 
-  return crypto.subtle.importKey(
+  cachedMasterKey = await crypto.subtle.importKey(
     'raw',
     keyBytes.buffer as ArrayBuffer,
     { name: 'AES-GCM' },
     false,
     ['encrypt', 'decrypt']
   );
+
+  return cachedMasterKey;
 }
 
 export async function encrypt(plaintext: string): Promise<EncryptedData> {
@@ -69,7 +71,6 @@ export async function encrypt(plaintext: string): Promise<EncryptedData> {
     data.buffer as ArrayBuffer
   );
 
-  // Web Crypto API appends auth tag to ciphertext
   const encryptedBytes = new Uint8Array(encrypted);
   const ciphertext = encryptedBytes.slice(0, -16);
   const authTag = encryptedBytes.slice(-16);
@@ -95,7 +96,6 @@ export async function decrypt(data: EncryptedData): Promise<string> {
     throw new CryptoError(`Invalid auth tag length: expected 16, got ${authTag.length}`);
   }
 
-  // Web Crypto API expects auth tag appended to ciphertext
   const encryptedWithTag = new Uint8Array(ciphertext.length + authTag.length);
   encryptedWithTag.set(ciphertext);
   encryptedWithTag.set(authTag, ciphertext.length);
