@@ -6,45 +6,36 @@ import { slugify } from '@/lib/utils';
 type Params = Promise<{ projectId: string }>;
 
 export async function GET(_request: NextRequest, { params }: { params: Params }) {
-  const session = await getSession();
+  const [session, { projectId }] = await Promise.all([getSession(), params]);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { projectId } = await params;
   const supabase = await createServerSupabaseClient();
 
-  const { data: project } = await supabase
+  const { data: project, error } = await supabase
     .from('projects')
-    .select('id')
+    .select('id, environments(*)')
     .eq('id', projectId)
     .eq('user_id', session.user.id)
     .single();
 
-  if (!project) {
+  if (error || !project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
 
-  const { data, error } = await supabase
-    .from('environments')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: true });
+  const environments = (project.environments || []).sort(
+    (a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+  );
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json(data);
+  return NextResponse.json(environments);
 }
 
 export async function POST(request: NextRequest, { params }: { params: Params }) {
-  const session = await getSession();
+  const [session, { projectId }] = await Promise.all([getSession(), params]);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { projectId } = await params;
 
   let body;
   try {
@@ -66,41 +57,28 @@ export async function POST(request: NextRequest, { params }: { params: Params })
 
   const supabase = await createServerSupabaseClient();
 
-  const { data: project } = await supabase
+  const { data: project, error: projectError } = await supabase
     .from('projects')
-    .select('id')
+    .select('id, environments(id, slug)')
     .eq('id', projectId)
     .eq('user_id', session.user.id)
     .single();
 
-  if (!project) {
+  if (projectError || !project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
 
-  // Check for duplicate slug within project
-  const { data: existing } = await supabase
-    .from('environments')
-    .select('id')
-    .eq('project_id', projectId)
-    .eq('slug', slug)
-    .single();
-
-  if (existing) {
+  const existingEnv = project.environments?.find((e) => e.slug === slug);
+  if (existingEnv) {
     return NextResponse.json(
       { error: 'Environment with this name already exists' },
       { status: 409 }
     );
   }
 
-  // Validate inheritance (must be in same project, no cycles)
   if (inherits_from_id) {
-    const { data: parentEnv } = await supabase
-      .from('environments')
-      .select('id, project_id')
-      .eq('id', inherits_from_id)
-      .single();
-
-    if (!parentEnv || parentEnv.project_id !== projectId) {
+    const parentExists = project.environments?.some((e) => e.id === inherits_from_id);
+    if (!parentExists) {
       return NextResponse.json({ error: 'Invalid inheritance target' }, { status: 400 });
     }
   }

@@ -7,64 +7,41 @@ import { resolveSecrets } from '@/lib/secrets/inheritance';
 type Params = Promise<{ projectId: string; envId: string }>;
 
 export async function GET(_request: NextRequest, { params }: { params: Params }) {
-  const session = await getSession();
+  const [session, { projectId, envId }] = await Promise.all([getSession(), params]);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { projectId, envId } = await params;
   const supabase = await createServerSupabaseClient();
 
-  const { data: project } = await supabase
+  const { data: project, error } = await supabase
     .from('projects')
-    .select('id')
+    .select('id, environments(*, secrets(*))')
     .eq('id', projectId)
     .eq('user_id', session.user.id)
     .single();
 
-  if (!project) {
+  if (error || !project) {
     return NextResponse.json({ error: 'Project not found' }, { status: 404 });
   }
 
-  // Get all environments for inheritance resolution
-  const { data: environments } = await supabase
-    .from('environments')
-    .select('*')
-    .eq('project_id', projectId);
-
-  if (!environments) {
-    return NextResponse.json({ error: 'Failed to fetch environments' }, { status: 500 });
-  }
-
+  const environments = project.environments || [];
   const currentEnv = environments.find((e) => e.id === envId);
   if (!currentEnv) {
     return NextResponse.json({ error: 'Environment not found' }, { status: 404 });
   }
 
-  // Get all secrets for all environments in the project (for inheritance)
-  const envIds = environments.map((e) => e.id);
-  const { data: allSecrets, error } = await supabase
-    .from('secrets')
-    .select('*')
-    .in('environment_id', envIds);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  // Resolve secrets with inheritance
-  const resolvedSecrets = resolveSecrets(envId, environments, allSecrets || []);
+  const allSecrets = environments.flatMap((e) => e.secrets || []);
+  const resolvedSecrets = resolveSecrets(envId, environments, allSecrets);
 
   return NextResponse.json(resolvedSecrets);
 }
 
 export async function POST(request: NextRequest, { params }: { params: Params }) {
-  const session = await getSession();
+  const [session, { projectId, envId }] = await Promise.all([getSession(), params]);
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const { projectId, envId } = await params;
 
   let body;
   try {
@@ -96,36 +73,25 @@ export async function POST(request: NextRequest, { params }: { params: Params })
 
   const supabase = await createServerSupabaseClient();
 
-  const { data: project } = await supabase
+  const { data: project, error: projectError } = await supabase
     .from('projects')
-    .select('id')
+    .select('id, environments!inner(id, secrets(id, key))')
     .eq('id', projectId)
     .eq('user_id', session.user.id)
+    .eq('environments.id', envId)
     .single();
 
-  if (!project) {
-    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+  if (projectError || !project) {
+    return NextResponse.json({ error: 'Project or environment not found' }, { status: 404 });
   }
 
-  const { data: environment } = await supabase
-    .from('environments')
-    .select('id')
-    .eq('id', envId)
-    .eq('project_id', projectId)
-    .single();
-
+  const environment = project.environments?.[0];
   if (!environment) {
     return NextResponse.json({ error: 'Environment not found' }, { status: 404 });
   }
 
-  const { data: existing } = await supabase
-    .from('secrets')
-    .select('id')
-    .eq('environment_id', envId)
-    .eq('key', key)
-    .single();
-
-  if (existing) {
+  const existingSecret = environment.secrets?.find((s) => s.key === key);
+  if (existingSecret) {
     return NextResponse.json({ error: 'Secret with this key already exists' }, { status: 409 });
   }
 
@@ -148,7 +114,8 @@ export async function POST(request: NextRequest, { params }: { params: Params })
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  await supabase.from('secret_versions').insert({
+  // Insert version record (fire and forget - doesn't block response)
+  supabase.from('secret_versions').insert({
     secret_id: secret.id,
     version: 1,
     encrypted_value: encrypted.encryptedValue,

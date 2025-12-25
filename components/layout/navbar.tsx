@@ -1,9 +1,9 @@
 import Link from 'next/link';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/logo';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { getUser } from '@/lib/auth';
-import { ArrowRight } from 'lucide-react';
 import { SignOutButton } from '@/components/auth/sign-out-button';
 import { cn } from '@/lib/utils';
 
@@ -28,15 +28,9 @@ export async function Navbar({ border = true }: NavbarProps) {
             </>
           ) : (
             <>
-              <Link
-                href="/login"
-                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-              >
-                Sign in
-              </Link>
               <Button size="sm" asChild>
                 <Link href="/login">
-                  Open app
+                  Sign In
                   <ArrowRight className="ml-1 size-3" />
                 </Link>
               </Button>

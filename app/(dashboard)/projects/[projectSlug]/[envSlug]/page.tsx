@@ -12,8 +12,7 @@ import { resolveSecrets } from '@/lib/secrets/inheritance';
 type Params = Promise<{ projectSlug: string; envSlug: string }>;
 
 export default async function EnvironmentPage({ params }: { params: Params }) {
-  const { projectSlug, envSlug } = await params;
-  const user = await getUser();
+  const [{ projectSlug, envSlug }, user] = await Promise.all([params, getUser()]);
 
   if (!user) return null;
 
@@ -21,7 +20,7 @@ export default async function EnvironmentPage({ params }: { params: Params }) {
 
   const { data: project } = await supabase
     .from('projects')
-    .select('*, environments(*)')
+    .select('*, environments(*, secrets(*))')
     .eq('slug', projectSlug)
     .eq('user_id', user.id)
     .single();
@@ -39,15 +38,8 @@ export default async function EnvironmentPage({ params }: { params: Params }) {
     notFound();
   }
 
-  // Get all secrets for all environments in the project (for inheritance resolution)
-  const envIds = environments.map((e) => e.id);
-  const { data: allSecrets } = await supabase
-    .from('secrets')
-    .select('*')
-    .in('environment_id', envIds);
-
-  // Resolve secrets with inheritance
-  const resolvedSecrets = resolveSecrets(currentEnv.id, environments, allSecrets || []);
+  const allSecrets = environments.flatMap((e) => e.secrets || []);
+  const resolvedSecrets = resolveSecrets(currentEnv.id, environments, allSecrets);
 
   // Find inherited environment if any
   const inheritedEnv = currentEnv.inherits_from_id

@@ -25,6 +25,8 @@ export function buildInheritanceChain(
 ): string[] {
   const chain: string[] = [];
   const visited = new Set<string>();
+  const envMap = new Map(environments.map((e) => [e.id, e]));
+
   let currentId: string | null = environmentId;
   let depth = 0;
 
@@ -36,7 +38,7 @@ export function buildInheritanceChain(
     visited.add(currentId);
     chain.push(currentId);
 
-    const env = environments.find((e) => e.id === currentId);
+    const env = envMap.get(currentId);
     currentId = env?.inherits_from_id || null;
     depth++;
   }
@@ -52,13 +54,23 @@ export function resolveSecrets(
   const chain = buildInheritanceChain(environmentId, environments);
   const envMap = new Map(environments.map((e) => [e.id, e]));
 
+  const secretsByEnv = new Map<string, Secret[]>();
+  for (const secret of allSecrets) {
+    const envSecrets = secretsByEnv.get(secret.environment_id);
+    if (envSecrets) {
+      envSecrets.push(secret);
+    } else {
+      secretsByEnv.set(secret.environment_id, [secret]);
+    }
+  }
+
   // Start from the root (end of chain) and work towards current environment
   // This way, child secrets override parent secrets
   const secretMap = new Map<string, ResolvedSecret>();
 
   for (let i = chain.length - 1; i >= 0; i--) {
     const envId = chain[i];
-    const envSecrets = allSecrets.filter((s) => s.environment_id === envId);
+    const envSecrets = secretsByEnv.get(envId) || [];
     const isCurrentEnv = envId === environmentId;
 
     for (const secret of envSecrets) {

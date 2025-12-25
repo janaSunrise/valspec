@@ -10,8 +10,7 @@ import { CreateEnvironmentDialog } from '@/components/projects/create-environmen
 type Params = Promise<{ projectSlug: string }>;
 
 export default async function ProjectPage({ params }: { params: Params }) {
-  const { projectSlug } = await params;
-  const user = await getUser();
+  const [{ projectSlug }, user] = await Promise.all([params, getUser()]);
 
   if (!user) return null;
 

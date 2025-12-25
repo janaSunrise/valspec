@@ -156,11 +156,6 @@ export default function LandingPage() {
                   <ArrowRight className="ml-2 size-4" />
                 </Link>
               </Button>
-              <Button variant="outline" size="lg" asChild>
-                <Link href="#" className="font-mono text-sm">
-                  shade.dev/api/v1
-                </Link>
-              </Button>
             </div>
           </div>
 
