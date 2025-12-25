@@ -13,13 +13,7 @@ const sizes = {
 
 export function Logo({ className, size = 'md' }: LogoProps) {
   return (
-    <span
-      className={cn(
-        'font-mono font-medium tracking-tight',
-        sizes[size],
-        className
-      )}
-    >
+    <span className={cn('font-mono font-medium tracking-tight', sizes[size], className)}>
       shade<span className="text-primary">_</span>
     </span>
   );

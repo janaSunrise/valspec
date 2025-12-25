@@ -10,9 +10,7 @@ export function Footer() {
           <Logo size="sm" />
           <span>— secure secrets for developers</span>
         </div>
-        <p className="text-xs text-muted-foreground/80">
-          © {year} Sunrit Jana
-        </p>
+        <p className="text-xs text-muted-foreground/80">© {year} Sunrit Jana</p>
       </div>
     </footer>
   );

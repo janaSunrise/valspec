@@ -1,21 +1,53 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { signIn, signUp } from '@/lib/auth-client';
 import { ArrowRight, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsLoading(false);
+    setError('');
+
+    try {
+      if (isSignUp) {
+        const { error } = await signUp.email({
+          email,
+          password,
+          name,
+        });
+        if (error) {
+          setError(error.message || 'Failed to create account');
+          return;
+        }
+      } else {
+        const { error } = await signIn.email({
+          email,
+          password,
+        });
+        if (error) {
+          setError(error.message || 'Invalid credentials');
+          return;
+        }
+      }
+      router.push('/dashboard');
+    } catch {
+      setError('Something went wrong');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -25,13 +57,39 @@ export default function LoginPage() {
           {isSignUp ? 'Create account' : 'Sign in'}
         </h1>
         <p className="text-sm text-muted-foreground/60">
-          {isSignUp
-            ? 'Enter your details below'
-            : 'Enter your credentials'}
+          {isSignUp ? 'Enter your details below' : 'Enter your credentials'}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+
+        {isSignUp && (
+          <div className="space-y-1.5">
+            <label
+              htmlFor="name"
+              className="text-xs uppercase tracking-widest text-muted-foreground/60"
+            >
+              Name
+            </label>
+            <Input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="John Doe"
+              required
+              autoComplete="name"
+              disabled={isLoading}
+              className="h-10 bg-card/30 font-sans"
+            />
+          </div>
+        )}
+
         <div className="space-y-1.5">
           <label
             htmlFor="email"
@@ -72,11 +130,7 @@ export default function LoginPage() {
           />
         </div>
 
-        <Button
-          type="submit"
-          className="h-10 w-full"
-          disabled={isLoading}
-        >
+        <Button type="submit" className="h-10 w-full" disabled={isLoading}>
           {isLoading ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (

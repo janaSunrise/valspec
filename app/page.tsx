@@ -20,11 +20,7 @@ function SecretRow({
     <div className="group flex items-center gap-4 border-b border-border px-4 py-2.5 transition-colors hover:bg-muted/50">
       <div className="w-32 shrink-0">
         <code className="text-xs font-medium text-foreground">{name}</code>
-        {env && (
-          <p className="mt-0.5 font-sans text-xs text-muted-foreground">
-            from {env}
-          </p>
-        )}
+        {env && <p className="mt-0.5 font-sans text-xs text-muted-foreground">from {env}</p>}
       </div>
       <div className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
         {revealed ? value : '•'.repeat(Math.min(value.length, 20))}
@@ -124,15 +120,7 @@ function Terminal() {
   );
 }
 
-function EnvBadge({
-  name,
-  color,
-  count,
-}: {
-  name: string;
-  color: string;
-  count: number;
-}) {
+function EnvBadge({ name, color, count }: { name: string; color: string; count: number }) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:bg-muted/50">
       <div className="flex items-center gap-3">
@@ -148,7 +136,7 @@ export default function LandingPage() {
   return (
     <div className="relative flex min-h-screen flex-col bg-background font-mono">
       <GridPattern />
-      <Navbar />
+      <Navbar border={false} />
 
       <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-6 py-16">
         <div className="grid gap-16 lg:grid-cols-2 lg:gap-12">
@@ -157,8 +145,8 @@ export default function LandingPage() {
               Environment variables, <span className="text-muted-foreground">done right.</span>
             </h1>
             <p className="mb-8 max-w-md text-lg text-muted-foreground">
-              One place for all your secrets. Multiple projects, environments
-              with inheritance, version history, and a simple API for your CI/CD.
+              One place for all your secrets. Multiple projects, environments with inheritance,
+              version history, and a simple API for your CI/CD.
             </p>
 
             <div className="flex items-center gap-3">
@@ -192,9 +180,7 @@ export default function LandingPage() {
               <EnvBadge name="staging" color="#eab308" count={24} />
               <EnvBadge name="production" color="#ef4444" count={18} />
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Staging inherits from development
-            </p>
+            <p className="mt-4 text-sm text-muted-foreground">Staging inherits from development</p>
           </div>
 
           <div className="lg:col-span-2">

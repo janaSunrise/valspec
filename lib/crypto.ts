@@ -1,8 +1,5 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
-
-const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // 96 bits for GCM
-const AUTH_TAG_LENGTH = 16; // 128 bits
+const AUTH_TAG_LENGTH = 128; // 128 bits (in bits for Web Crypto)
 
 export interface EncryptedData {
   encryptedValue: string;
@@ -17,7 +14,24 @@ export class CryptoError extends Error {
   }
 }
 
-function getMasterKey(): Buffer {
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+async function getMasterKey(): Promise<CryptoKey> {
   const key = process.env.SHADE_MASTER_KEY;
 
   if (!key) {
@@ -26,73 +40,84 @@ function getMasterKey(): Buffer {
     );
   }
 
-  const buffer = Buffer.from(key, 'base64');
+  const keyBytes = base64ToUint8Array(key);
 
-  if (buffer.length !== 32) {
+  if (keyBytes.length !== 32) {
     throw new CryptoError(
-      `\`SHADE_MASTER_KEY\` must be exactly 32 bytes (256 bits). Current length: ${buffer.length} bytes. Generate a valid key with: \`openssl rand -base64 32\``
+      `\`SHADE_MASTER_KEY\` must be exactly 32 bytes (256 bits). Current length: ${keyBytes.length} bytes. Generate a valid key with: \`openssl rand -base64 32\``
     );
   }
 
-  return buffer;
+  return crypto.subtle.importKey(
+    'raw',
+    keyBytes.buffer as ArrayBuffer,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt', 'decrypt']
+  );
 }
 
-export function encrypt(plaintext: string): EncryptedData {
-  const masterKey = getMasterKey();
-  const iv = randomBytes(IV_LENGTH);
+export async function encrypt(plaintext: string): Promise<EncryptedData> {
+  const masterKey = await getMasterKey();
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+  const encoder = new TextEncoder();
+  const data = encoder.encode(plaintext);
 
-  const cipher = createCipheriv(ALGORITHM, masterKey, iv, {
-    authTagLength: AUTH_TAG_LENGTH,
-  });
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: iv.buffer as ArrayBuffer, tagLength: AUTH_TAG_LENGTH },
+    masterKey,
+    data.buffer as ArrayBuffer
+  );
 
-  let encrypted = cipher.update(plaintext, 'utf8', 'base64');
-  encrypted += cipher.final('base64');
-
-  const authTag = cipher.getAuthTag();
+  // Web Crypto API appends auth tag to ciphertext
+  const encryptedBytes = new Uint8Array(encrypted);
+  const ciphertext = encryptedBytes.slice(0, -16);
+  const authTag = encryptedBytes.slice(-16);
 
   return {
-    encryptedValue: encrypted,
-    iv: iv.toString('base64'),
-    authTag: authTag.toString('base64'),
+    encryptedValue: uint8ArrayToBase64(ciphertext),
+    iv: uint8ArrayToBase64(iv),
+    authTag: uint8ArrayToBase64(authTag),
   };
 }
 
-export function decrypt(data: EncryptedData): string {
-  const masterKey = getMasterKey();
-  const iv = Buffer.from(data.iv, 'base64');
-  const authTag = Buffer.from(data.authTag, 'base64');
+export async function decrypt(data: EncryptedData): Promise<string> {
+  const masterKey = await getMasterKey();
+  const iv = base64ToUint8Array(data.iv);
+  const authTag = base64ToUint8Array(data.authTag);
+  const ciphertext = base64ToUint8Array(data.encryptedValue);
 
   if (iv.length !== IV_LENGTH) {
     throw new CryptoError(`Invalid IV length: expected ${IV_LENGTH}, got ${iv.length}`);
   }
 
-  if (authTag.length !== AUTH_TAG_LENGTH) {
-    throw new CryptoError(
-      `Invalid auth tag length: expected ${AUTH_TAG_LENGTH}, got ${authTag.length}`
-    );
+  if (authTag.length !== 16) {
+    throw new CryptoError(`Invalid auth tag length: expected 16, got ${authTag.length}`);
   }
 
-  const decipher = createDecipheriv(ALGORITHM, masterKey, iv, {
-    authTagLength: AUTH_TAG_LENGTH,
-  });
-  decipher.setAuthTag(authTag);
+  // Web Crypto API expects auth tag appended to ciphertext
+  const encryptedWithTag = new Uint8Array(ciphertext.length + authTag.length);
+  encryptedWithTag.set(ciphertext);
+  encryptedWithTag.set(authTag, ciphertext.length);
 
   try {
-    let decrypted = decipher.update(data.encryptedValue, 'base64', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('auth')) {
-      throw new CryptoError('Decryption failed: authentication tag mismatch');
-    }
-    throw error;
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: iv.buffer as ArrayBuffer, tagLength: AUTH_TAG_LENGTH },
+      masterKey,
+      encryptedWithTag.buffer as ArrayBuffer
+    );
+
+    const decoder = new TextDecoder();
+    return decoder.decode(decrypted);
+  } catch {
+    throw new CryptoError('Decryption failed: authentication tag mismatch');
   }
 }
 
 export function validateMasterKey(key: string): boolean {
   try {
-    const buffer = Buffer.from(key, 'base64');
-    return buffer.length === 32;
+    const bytes = base64ToUint8Array(key);
+    return bytes.length === 32;
   } catch {
     return false;
   }
