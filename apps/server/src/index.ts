@@ -36,13 +36,12 @@ const app = new Elysia()
   .use(
     cors({
       origin: env.CORS_ORIGIN,
-      methods: ["GET", "POST", "OPTIONS"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
     }),
   )
-  .all("/api/auth/*", async (context) => {
-    const { request, status } = context;
+  .all("/api/auth/*", async ({ request, status }) => {
     if (["POST", "GET"].includes(request.method)) {
       return auth.handler(request);
     }
@@ -62,7 +61,8 @@ const app = new Elysia()
     });
     return response ?? new Response("Not Found", { status: 404 });
   })
-  .get("/", () => "OK")
-  .listen(3000, () => {
-    console.log("Server is running on http://localhost:3000");
-  });
+  .get("/", () => "OK");
+
+app.listen(3000, () => {
+  console.log("Server is running on http://localhost:3000");
+});
