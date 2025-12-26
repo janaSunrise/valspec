@@ -1,50 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { withAuth, type AuthContext } from '@/lib/api/with-auth';
+import { requireSecretAccess } from '@/lib/api/ownership';
 
-type Params = Promise<{
-  projectId: string;
-  envId: string;
-  secretId: string;
-  versionId: string;
-}>;
+async function rollbackToVersion(ctx: AuthContext) {
+  const { projectId, envId, secretId, versionId } = ctx.params;
 
-// POST to rollback to a specific version
-export async function POST(_request: NextRequest, { params }: { params: Params }) {
-  const [session, { projectId, envId, secretId, versionId }] = await Promise.all([
-    getSession(),
-    params,
-  ]);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const result = await requireSecretAccess(projectId, envId, secretId, ctx.user.id);
+  if ('error' in result) return result.error;
+
+  const { secret } = result;
 
   const supabase = await createServerSupabaseClient();
-
-  // Verify ownership and get current secret
-  const { data: secret, error: secretError } = await supabase
-    .from('secrets')
-    .select(
-      `
-      id,
-      key,
-      version,
-      environments!inner(
-        id,
-        project_id,
-        projects!inner(user_id)
-      )
-    `
-    )
-    .eq('id', secretId)
-    .eq('environment_id', envId)
-    .eq('environments.project_id', projectId)
-    .eq('environments.projects.user_id', session.user.id)
-    .single();
-
-  if (secretError || !secret) {
-    return NextResponse.json({ error: 'Secret not found' }, { status: 404 });
-  }
 
   // Get the version to rollback to
   const { data: targetVersion, error: versionError } = await supabase
@@ -101,3 +68,5 @@ export async function POST(_request: NextRequest, { params }: { params: Params }
     updatedAt: updatedSecret.updated_at,
   });
 }
+
+export const POST = withAuth(rollbackToVersion);

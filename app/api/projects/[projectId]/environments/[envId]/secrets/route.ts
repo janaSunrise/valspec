@@ -1,24 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/db';
-import { getSession } from '@/lib/auth';
-import { encrypt } from '@/lib/crypto';
+import { encryptSecret } from '@/lib/crypto';
 import { resolveSecrets } from '@/lib/secrets/inheritance';
+import { withAuth, parseBody, type AuthContext } from '@/lib/api/with-auth';
+import { requireEnvAccess } from '@/lib/api/ownership';
+import { createSecretSchema } from '@/lib/schemas';
 
-type Params = Promise<{ projectId: string; envId: string }>;
-
-export async function GET(_request: NextRequest, { params }: { params: Params }) {
-  const [session, { projectId, envId }] = await Promise.all([getSession(), params]);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+async function getSecrets(ctx: AuthContext) {
+  const { projectId, envId } = ctx.params;
 
   const supabase = await createServerSupabaseClient();
 
+  // Fetch project with all environments and secrets for inheritance resolution
   const { data: project, error } = await supabase
     .from('projects')
     .select('id, environments(*, secrets(*))')
     .eq('id', projectId)
-    .eq('user_id', session.user.id)
+    .eq('user_id', ctx.user.id)
     .single();
 
   if (error || !project) {
@@ -37,74 +35,41 @@ export async function GET(_request: NextRequest, { params }: { params: Params })
   return NextResponse.json(resolvedSecrets);
 }
 
-export async function POST(request: NextRequest, { params }: { params: Params }) {
-  const [session, { projectId, envId }] = await Promise.all([getSession(), params]);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+async function createSecret(ctx: AuthContext) {
+  const { projectId, envId } = ctx.params;
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
+  const parsed = await parseBody(ctx.request, createSecretSchema);
+  if ('error' in parsed) return parsed.error;
 
-  const { key, value } = body;
+  const { key, value } = parsed.data;
 
-  if (!key || typeof key !== 'string') {
-    return NextResponse.json({ error: 'Key is required' }, { status: 400 });
-  }
-
-  if (!value || typeof value !== 'string') {
-    return NextResponse.json({ error: 'Value is required' }, { status: 400 });
-  }
-
-  // Validate key format (uppercase letters, numbers, underscores)
-  if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
-    return NextResponse.json(
-      {
-        error:
-          'Key must start with a letter and contain only uppercase letters, numbers, and underscores',
-      },
-      { status: 400 }
-    );
-  }
+  // Verify access and get environment with secrets
+  const access = await requireEnvAccess(projectId, envId, ctx.user.id);
+  if ('error' in access) return access.error;
 
   const supabase = await createServerSupabaseClient();
 
-  const { data: project, error: projectError } = await supabase
-    .from('projects')
-    .select('id, environments!inner(id, secrets(id, key))')
-    .eq('id', projectId)
-    .eq('user_id', session.user.id)
-    .eq('environments.id', envId)
+  // Check for duplicate key
+  const { data: existing } = await supabase
+    .from('secrets')
+    .select('id')
+    .eq('environment_id', envId)
+    .eq('key', key)
     .single();
 
-  if (projectError || !project) {
-    return NextResponse.json({ error: 'Project or environment not found' }, { status: 404 });
-  }
-
-  const environment = project.environments?.[0];
-  if (!environment) {
-    return NextResponse.json({ error: 'Environment not found' }, { status: 404 });
-  }
-
-  const existingSecret = environment.secrets?.find((s) => s.key === key);
-  if (existingSecret) {
+  if (existing) {
     return NextResponse.json({ error: 'Secret with this key already exists' }, { status: 409 });
   }
 
-  const encrypted = await encrypt(value);
+  // Encrypt and insert
+  const encrypted = await encryptSecret(value);
 
   const { data: secret, error } = await supabase
     .from('secrets')
     .insert({
       environment_id: envId,
       key,
-      encrypted_value: encrypted.encryptedValue,
-      iv: encrypted.iv,
-      auth_tag: encrypted.authTag,
+      ...encrypted,
       version: 1,
     })
     .select()
@@ -114,13 +79,11 @@ export async function POST(request: NextRequest, { params }: { params: Params })
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Insert version record (fire and forget - doesn't block response)
+  // Insert version record (fire and forget)
   supabase.from('secret_versions').insert({
     secret_id: secret.id,
     version: 1,
-    encrypted_value: encrypted.encryptedValue,
-    iv: encrypted.iv,
-    auth_tag: encrypted.authTag,
+    ...encrypted,
     change_type: 'created',
     change_source: 'web',
   });
@@ -135,3 +98,6 @@ export async function POST(request: NextRequest, { params }: { params: Params })
     { status: 201 }
   );
 }
+
+export const GET = withAuth(getSecrets);
+export const POST = withAuth(createSecret);

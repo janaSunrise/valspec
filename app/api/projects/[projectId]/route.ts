@@ -1,66 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/db';
-import { getSession } from '@/lib/auth';
 import { slugify } from '@/lib/utils';
+import { withAuth, parseBody, type AuthContext } from '@/lib/api/with-auth';
+import { requireProjectAccess, requireProjectWithEnvs } from '@/lib/api/ownership';
+import { updateProjectSchema } from '@/lib/schemas';
 
-type Params = Promise<{ projectId: string }>;
+async function getProject(ctx: AuthContext) {
+  const { projectId } = ctx.params;
 
-export async function GET(_request: NextRequest, { params }: { params: Params }) {
-  const session = await getSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const result = await requireProjectWithEnvs(projectId, ctx.user.id);
+  if ('error' in result) return result.error;
 
-  const { projectId } = await params;
-  const supabase = await createServerSupabaseClient();
-
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*, environments(*)')
-    .eq('id', projectId)
-    .eq('user_id', session.user.id)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json(data);
+  return NextResponse.json({
+    ...result.project,
+    environments: result.environments,
+  });
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: Params }) {
-  const session = await getSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+async function updateProject(ctx: AuthContext) {
+  const { projectId } = ctx.params;
 
-  const { projectId } = await params;
+  const parsed = await parseBody(ctx.request, updateProjectSchema);
+  if ('error' in parsed) return parsed.error;
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
+  const { name, description } = parsed.data;
 
-  const { name, description } = body;
+  // Check project exists and user owns it
+  const access = await requireProjectAccess(projectId, ctx.user.id);
+  if ('error' in access) return access.error;
 
   const supabase = await createServerSupabaseClient();
-
   const updates: { name?: string; slug?: string; description?: string | null } = {};
 
   if (name !== undefined) {
     updates.name = name;
     updates.slug = slugify(name);
 
-    // Check if new slug conflicts with existing project for this user
+    // Check if new slug conflicts with existing project
     const { data: existing } = await supabase
       .from('projects')
       .select('id')
-      .eq('user_id', session.user.id)
+      .eq('user_id', ctx.user.id)
       .eq('slug', updates.slug)
       .neq('id', projectId)
       .single();
@@ -82,34 +62,25 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     .from('projects')
     .update(updates)
     .eq('id', projectId)
-    .eq('user_id', session.user.id)
     .select()
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json(data);
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: Params }) {
-  const session = await getSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+async function deleteProject(ctx: AuthContext) {
+  const { projectId } = ctx.params;
 
-  const { projectId } = await params;
+  const access = await requireProjectAccess(projectId, ctx.user.id);
+  if ('error' in access) return access.error;
+
   const supabase = await createServerSupabaseClient();
 
-  const { error } = await supabase
-    .from('projects')
-    .delete()
-    .eq('id', projectId)
-    .eq('user_id', session.user.id);
+  const { error } = await supabase.from('projects').delete().eq('id', projectId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -117,3 +88,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
 
   return new NextResponse(null, { status: 204 });
 }
+
+export const GET = withAuth(getProject);
+export const PATCH = withAuth(updateProject);
+export const DELETE = withAuth(deleteProject);

@@ -1,19 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/db';
-import { getSession } from '@/lib/auth';
 import { slugify } from '@/lib/utils';
+import { withAuth, parseBody, type AuthContext } from '@/lib/api/with-auth';
+import { createProjectSchema } from '@/lib/schemas';
 
-export async function GET() {
-  const session = await getSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+async function getProjects(ctx: AuthContext) {
   const supabase = await createServerSupabaseClient();
+
   const { data, error } = await supabase
     .from('projects')
     .select('*, environments(count)')
-    .eq('user_id', session.user.id)
+    .eq('user_id', ctx.user.id)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -23,24 +20,11 @@ export async function GET() {
   return NextResponse.json(data);
 }
 
-export async function POST(request: NextRequest) {
-  const session = await getSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+async function createProject(ctx: AuthContext) {
+  const parsed = await parseBody(ctx.request, createProjectSchema);
+  if ('error' in parsed) return parsed.error;
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
-
-  const { name, description } = body;
-
-  if (!name || typeof name !== 'string') {
-    return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-  }
+  const { name, description } = parsed.data;
 
   const slug = slugify(name);
   if (!slug) {
@@ -49,10 +33,11 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createServerSupabaseClient();
 
+  // Check for duplicate slug
   const { data: existing } = await supabase
     .from('projects')
     .select('id')
-    .eq('user_id', session.user.id)
+    .eq('user_id', ctx.user.id)
     .eq('slug', slug)
     .single();
 
@@ -60,13 +45,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Project with this name already exists' }, { status: 409 });
   }
 
+  // Create project
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .insert({
       name,
       slug,
       description: description || null,
-      user_id: session.user.id,
+      user_id: ctx.user.id,
     })
     .select()
     .single();
@@ -84,9 +70,13 @@ export async function POST(request: NextRequest) {
   });
 
   if (envError) {
+    // Rollback project creation
     await supabase.from('projects').delete().eq('id', project.id);
     return NextResponse.json({ error: envError.message }, { status: 500 });
   }
 
   return NextResponse.json(project, { status: 201 });
 }
+
+export const GET = withAuth(getProjects);
+export const POST = withAuth(createProject);

@@ -1,52 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { withAuth, type AuthContext } from '@/lib/api/with-auth';
+import { requireSecretAccess } from '@/lib/api/ownership';
 
-type Params = Promise<{ projectId: string; envId: string; secretId: string }>;
+async function getVersions(ctx: AuthContext) {
+  const { projectId, envId, secretId } = ctx.params;
 
-export async function GET(_request: NextRequest, { params }: { params: Params }) {
-  const [session, { projectId, envId, secretId }] = await Promise.all([getSession(), params]);
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const result = await requireSecretAccess(projectId, envId, secretId, ctx.user.id);
+  if ('error' in result) return result.error;
+
+  const { secret } = result;
 
   const supabase = await createServerSupabaseClient();
 
-  // Verify ownership and get secret with versions
-  const { data: secret, error } = await supabase
-    .from('secrets')
-    .select(
-      `
-      id,
-      key,
-      version,
-      environments!inner(
-        id,
-        name,
-        project_id,
-        projects!inner(user_id)
-      )
-    `
-    )
-    .eq('id', secretId)
-    .eq('environment_id', envId)
-    .eq('environments.project_id', projectId)
-    .eq('environments.projects.user_id', session.user.id)
-    .single();
-
-  if (error || !secret) {
-    return NextResponse.json({ error: 'Secret not found' }, { status: 404 });
-  }
-
   // Fetch all versions for this secret
-  const { data: versions, error: versionsError } = await supabase
+  const { data: versions, error } = await supabase
     .from('secret_versions')
     .select('*')
     .eq('secret_id', secretId)
     .order('version', { ascending: false });
 
-  if (versionsError) {
-    return NextResponse.json({ error: versionsError.message }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -64,3 +39,5 @@ export async function GET(_request: NextRequest, { params }: { params: Params })
     })),
   });
 }
+
+export const GET = withAuth(getVersions);

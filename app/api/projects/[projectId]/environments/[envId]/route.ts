@@ -1,76 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/db';
-import { getSession } from '@/lib/auth';
 import { slugify } from '@/lib/utils';
+import { withAuth, parseBody, type AuthContext } from '@/lib/api/with-auth';
+import { requireEnvAccess } from '@/lib/api/ownership';
+import { updateEnvironmentSchema } from '@/lib/schemas';
 
-type Params = Promise<{ projectId: string; envId: string }>;
+async function getEnvironment(ctx: AuthContext) {
+  const { projectId, envId } = ctx.params;
 
-export async function GET(_request: NextRequest, { params }: { params: Params }) {
-  const session = await getSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const result = await requireEnvAccess(projectId, envId, ctx.user.id);
+  if ('error' in result) return result.error;
 
-  const { projectId, envId } = await params;
-  const supabase = await createServerSupabaseClient();
-
-  const { data: project } = await supabase
-    .from('projects')
-    .select('id')
-    .eq('id', projectId)
-    .eq('user_id', session.user.id)
-    .single();
-
-  if (!project) {
-    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-  }
-
-  const { data, error } = await supabase
-    .from('environments')
-    .select('*')
-    .eq('id', envId)
-    .eq('project_id', projectId)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return NextResponse.json({ error: 'Environment not found' }, { status: 404 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json(data);
+  return NextResponse.json(result.environment);
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: Params }) {
-  const session = await getSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+async function updateEnvironment(ctx: AuthContext) {
+  const { projectId, envId } = ctx.params;
 
-  const { projectId, envId } = await params;
+  const parsed = await parseBody(ctx.request, updateEnvironmentSchema);
+  if ('error' in parsed) return parsed.error;
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
+  const { name, color, inherits_from_id } = parsed.data;
 
-  const { name, color, inherits_from_id } = body;
+  // Verify access
+  const access = await requireEnvAccess(projectId, envId, ctx.user.id);
+  if ('error' in access) return access.error;
 
   const supabase = await createServerSupabaseClient();
-
-  const { data: project } = await supabase
-    .from('projects')
-    .select('id')
-    .eq('id', projectId)
-    .eq('user_id', session.user.id)
-    .single();
-
-  if (!project) {
-    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-  }
 
   const updates: {
     name?: string;
@@ -83,6 +39,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     updates.name = name;
     updates.slug = slugify(name);
 
+    // Check for duplicate slug
     const { data: existing } = await supabase
       .from('environments')
       .select('id')
@@ -126,19 +83,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
       }
 
       // Check for circular inheritance (max depth 10)
-      let currentId: string | null = inherits_from_id;
-      let depth = 0;
-      while (currentId && depth < 10) {
-        if (currentId === envId) {
+      let checkId: string | null = inherits_from_id;
+      for (let depth = 0; checkId && depth < 10; depth++) {
+        if (checkId === envId) {
           return NextResponse.json({ error: 'Circular inheritance detected' }, { status: 400 });
         }
-        const { data: env } = await supabase
+        const checkResult: { data: { inherits_from_id: string | null } | null } = await supabase
           .from('environments')
           .select('inherits_from_id')
-          .eq('id', currentId)
+          .eq('id', checkId)
           .single();
-        currentId = env?.inherits_from_id || null;
-        depth++;
+        checkId = checkResult.data?.inherits_from_id ?? null;
       }
 
       updates.inherits_from_id = inherits_from_id;
@@ -153,39 +108,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Params }
     .from('environments')
     .update(updates)
     .eq('id', envId)
-    .eq('project_id', projectId)
     .select()
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') {
-      return NextResponse.json({ error: 'Environment not found' }, { status: 404 });
-    }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json(data);
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: Params }) {
-  const session = await getSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+async function deleteEnvironment(ctx: AuthContext) {
+  const { projectId, envId } = ctx.params;
 
-  const { projectId, envId } = await params;
+  // Verify access
+  const access = await requireEnvAccess(projectId, envId, ctx.user.id);
+  if ('error' in access) return access.error;
+
   const supabase = await createServerSupabaseClient();
-
-  const { data: project } = await supabase
-    .from('projects')
-    .select('id')
-    .eq('id', projectId)
-    .eq('user_id', session.user.id)
-    .single();
-
-  if (!project) {
-    return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-  }
 
   // Check if other environments inherit from this one
   const { data: dependents } = await supabase
@@ -202,11 +142,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
     );
   }
 
-  const { error } = await supabase
-    .from('environments')
-    .delete()
-    .eq('id', envId)
-    .eq('project_id', projectId);
+  const { error } = await supabase.from('environments').delete().eq('id', envId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -214,3 +150,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Params
 
   return new NextResponse(null, { status: 204 });
 }
+
+export const GET = withAuth(getEnvironment);
+export const PATCH = withAuth(updateEnvironment);
+export const DELETE = withAuth(deleteEnvironment);

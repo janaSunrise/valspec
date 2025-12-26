@@ -122,3 +122,27 @@ export function validateMasterKey(key: string): boolean {
     return false;
   }
 }
+
+// Database helpers
+export interface SecretEncryptedFields {
+  encrypted_value: string;
+  iv: string;
+  auth_tag: string;
+}
+
+export async function encryptSecret(value: string): Promise<SecretEncryptedFields> {
+  const encrypted = await encrypt(value);
+  return {
+    encrypted_value: encrypted.encryptedValue,
+    iv: encrypted.iv,
+    auth_tag: encrypted.authTag,
+  };
+}
+
+export async function decryptSecret(fields: SecretEncryptedFields): Promise<string> {
+  return decrypt({
+    encryptedValue: fields.encrypted_value,
+    iv: fields.iv,
+    authTag: fields.auth_tag,
+  });
+}

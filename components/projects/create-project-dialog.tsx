@@ -11,44 +11,31 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { Plus, Loader2 } from 'lucide-react';
+import { useCreateProject } from '@/lib/hooks/use-projects';
 
 export function CreateProjectDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
 
+  const createProject = useCreateProject();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
     try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || 'Failed to create project');
-        return;
-      }
-
-      const project = await res.json();
+      const project = await createProject.mutateAsync({ name, description });
       setOpen(false);
       setName('');
       setDescription('');
       router.push(`/projects/${project.slug}`);
-      router.refresh();
-    } catch {
-      setError('Something went wrong');
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create project');
     }
   };
 
@@ -65,11 +52,7 @@ export function CreateProjectDialog() {
           <DialogTitle>Create project</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </div>
-          )}
+          <ErrorAlert message={error} />
           <div className="space-y-1.5">
             <label
               htmlFor="name"
@@ -83,7 +66,7 @@ export function CreateProjectDialog() {
               onChange={(e) => setName(e.target.value)}
               placeholder="my-saas-app"
               required
-              disabled={isLoading}
+              disabled={createProject.isPending}
             />
           </div>
           <div className="space-y-1.5">
@@ -98,7 +81,7 @@ export function CreateProjectDialog() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="A brief description"
-              disabled={isLoading}
+              disabled={createProject.isPending}
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -106,12 +89,12 @@ export function CreateProjectDialog() {
               type="button"
               variant="ghost"
               onClick={() => setOpen(false)}
-              disabled={isLoading}
+              disabled={createProject.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !name.trim()}>
-              {isLoading ? <Loader2 className="size-4 animate-spin" /> : 'Create'}
+            <Button type="submit" disabled={createProject.isPending || !name.trim()}>
+              {createProject.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Create'}
             </Button>
           </div>
         </form>

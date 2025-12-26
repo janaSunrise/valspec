@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { RotateCcw, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -13,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useRollbackSecret } from '@/lib/hooks/use-secrets';
 import { cn } from '@/lib/utils';
 
 interface Version {
@@ -47,26 +47,18 @@ export function VersionHistory({
   projectId,
   envId,
 }: VersionHistoryProps) {
-  const router = useRouter();
   const [rollbackVersion, setRollbackVersion] = useState<Version | null>(null);
-  const [isRollingBack, setIsRollingBack] = useState(false);
+
+  const rollbackSecret = useRollbackSecret(projectId, envId, secretId);
 
   const handleRollback = async () => {
     if (!rollbackVersion) return;
 
-    setIsRollingBack(true);
     try {
-      const res = await fetch(
-        `/api/projects/${projectId}/environments/${envId}/secrets/${secretId}/versions/${rollbackVersion.id}`,
-        { method: 'POST' }
-      );
-
-      if (res.ok) {
-        router.refresh();
-        setRollbackVersion(null);
-      }
-    } finally {
-      setIsRollingBack(false);
+      await rollbackSecret.mutateAsync(rollbackVersion.id);
+      setRollbackVersion(null);
+    } catch {
+      // Error is handled by the mutation
     }
   };
 
@@ -168,9 +160,9 @@ export function VersionHistory({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isRollingBack}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRollback} disabled={isRollingBack}>
-              {isRollingBack ? (
+            <AlertDialogCancel disabled={rollbackSecret.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRollback} disabled={rollbackSecret.isPending}>
+              {rollbackSecret.isPending ? (
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />
                   Restoring...

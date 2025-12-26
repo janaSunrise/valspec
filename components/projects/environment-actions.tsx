@@ -30,7 +30,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ColorPicker } from './color-picker';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { MoreHorizontal, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { useUpdateEnvironment, useDeleteEnvironment } from '@/lib/hooks/use-environments';
 import type { Tables } from '@/types/database.types';
 
 type Environment = Tables<'environments'>;
@@ -51,13 +53,15 @@ export function EnvironmentActions({
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState(environment.name);
   const [color, setColor] = useState(environment.color || '#6366f1');
   const [inheritsFromId, setInheritsFromId] = useState<string>(
     environment.inherits_from_id || 'none'
   );
   const [error, setError] = useState('');
+
+  const updateEnvironment = useUpdateEnvironment(projectId, environment.id);
+  const deleteEnvironment = useDeleteEnvironment(projectId);
 
   // Filter out current environment and any that inherit from it (to prevent cycles)
   const availableParents = environments.filter((env) => {
@@ -76,60 +80,30 @@ export function EnvironmentActions({
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
     try {
-      const res = await fetch(`/api/projects/${projectId}/environments/${environment.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          color,
-          inherits_from_id: inheritsFromId === 'none' ? null : inheritsFromId,
-        }),
+      const updated = await updateEnvironment.mutateAsync({
+        name,
+        color,
+        inherits_from_id: inheritsFromId === 'none' ? null : inheritsFromId,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || 'Failed to update environment');
-        return;
-      }
-
-      const updated = await res.json();
       setEditOpen(false);
       router.push(`/projects/${projectSlug}/${updated.slug}`);
-      router.refresh();
-    } catch {
-      setError('Something went wrong');
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update environment');
     }
   };
 
   const handleDelete = async () => {
-    setIsLoading(true);
     setError('');
 
     try {
-      const res = await fetch(`/api/projects/${projectId}/environments/${environment.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || 'Failed to delete environment');
-        setDeleteOpen(false);
-        return;
-      }
-
+      await deleteEnvironment.mutateAsync(environment.id);
       // Redirect to project page (will redirect to first remaining env)
       router.push(`/projects/${projectSlug}`);
-      router.refresh();
-    } catch {
-      setError('Something went wrong');
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete environment');
       setDeleteOpen(false);
     }
   };
@@ -173,11 +147,7 @@ export function EnvironmentActions({
             <DialogTitle>Edit environment</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
-            {error && (
-              <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </div>
-            )}
+            <ErrorAlert message={error} />
 
             <div className="space-y-1.5">
               <label
@@ -191,7 +161,7 @@ export function EnvironmentActions({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                disabled={isLoading}
+                disabled={updateEnvironment.isPending}
               />
             </div>
 
@@ -199,14 +169,14 @@ export function EnvironmentActions({
               <label className="text-xs uppercase tracking-widest text-muted-foreground">
                 Color
               </label>
-              <ColorPicker value={color} onChange={setColor} disabled={isLoading} />
+              <ColorPicker value={color} onChange={setColor} disabled={updateEnvironment.isPending} />
             </div>
 
             <div className="space-y-1.5">
               <label className="text-xs uppercase tracking-widest text-muted-foreground">
                 Inherits from
               </label>
-              <Select value={inheritsFromId} onValueChange={setInheritsFromId} disabled={isLoading}>
+              <Select value={inheritsFromId} onValueChange={setInheritsFromId} disabled={updateEnvironment.isPending}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select environment" />
                 </SelectTrigger>
@@ -232,12 +202,12 @@ export function EnvironmentActions({
                 type="button"
                 variant="ghost"
                 onClick={() => setEditOpen(false)}
-                disabled={isLoading}
+                disabled={updateEnvironment.isPending}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading || !name.trim()}>
-                {isLoading ? <Loader2 className="size-4 animate-spin" /> : 'Save'}
+              <Button type="submit" disabled={updateEnvironment.isPending || !name.trim()}>
+                {updateEnvironment.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Save'}
               </Button>
             </div>
           </form>
@@ -253,19 +223,15 @@ export function EnvironmentActions({
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {error && (
-            <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </div>
-          )}
+          <ErrorAlert message={error} />
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteEnvironment.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={isLoading}
+              disabled={deleteEnvironment.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isLoading ? <Loader2 className="size-4 animate-spin" /> : 'Delete'}
+              {deleteEnvironment.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

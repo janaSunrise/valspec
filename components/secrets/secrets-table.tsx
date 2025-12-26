@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { Plus, Loader2, KeyRound, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,6 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { SecretRow } from './secret-row';
 import { SecretForm } from './secret-form';
 import { VersionHistory } from './version-history';
+import { useDeleteSecret, useSecretVersions } from '@/lib/hooks/use-secrets';
+import { useEnvironmentContext } from '@/contexts/environment-context';
 import type { ResolvedSecret } from '@/lib/secrets/inheritance';
 
 interface SecretsTableProps {
@@ -26,26 +27,20 @@ interface SecretsTableProps {
   envId: string;
 }
 
-interface VersionData {
-  id: string;
-  version: number;
-  changeType: string;
-  changeSource: string;
-  createdAt: string;
-}
-
 export function SecretsTable({ secrets, projectId, envId }: SecretsTableProps) {
-  const router = useRouter();
+  const { environment } = useEnvironmentContext();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSecret, setEditingSecret] = useState<ResolvedSecret | null>(null);
   const [deletingSecret, setDeletingSecret] = useState<ResolvedSecret | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [historySecret, setHistorySecret] = useState<ResolvedSecret | null>(null);
-  const [historyData, setHistoryData] = useState<{
-    currentVersion: number;
-    versions: VersionData[];
-  } | null>(null);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const deleteSecret = useDeleteSecret(projectId, envId);
+
+  const { data: historyData, isLoading: isLoadingHistory } = useSecretVersions(
+    projectId,
+    historySecret?.source_environment_id ?? envId,
+    historySecret?.id ?? null
+  );
 
   const handleEdit = (secret: ResolvedSecret) => {
     setEditingSecret(secret);
@@ -60,46 +55,10 @@ export function SecretsTable({ secrets, projectId, envId }: SecretsTableProps) {
     setHistorySecret(secret);
   };
 
-  useEffect(() => {
-    if (!historySecret) {
-      setHistoryData(null);
-      return;
-    }
-
-    const fetchHistory = async () => {
-      setIsLoadingHistory(true);
-      try {
-        const res = await fetch(
-          `/api/projects/${projectId}/environments/${historySecret.source_environment_id}/secrets/${historySecret.id}/versions`
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setHistoryData({
-            currentVersion: data.secret.currentVersion,
-            versions: data.versions,
-          });
-        }
-      } finally {
-        setIsLoadingHistory(false);
-      }
-    };
-
-    fetchHistory();
-  }, [historySecret, projectId]);
-
   const confirmDelete = async () => {
     if (!deletingSecret) return;
-
-    setIsDeleting(true);
-    try {
-      await fetch(`/api/projects/${projectId}/environments/${envId}/secrets/${deletingSecret.id}`, {
-        method: 'DELETE',
-      });
-      router.refresh();
-    } finally {
-      setIsDeleting(false);
-      setDeletingSecret(null);
-    }
+    await deleteSecret.mutateAsync(deletingSecret.id);
+    setDeletingSecret(null);
   };
 
   const handleFormClose = (open: boolean) => {
@@ -193,13 +152,13 @@ export function SecretsTable({ secrets, projectId, envId }: SecretsTableProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteSecret.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              disabled={isDeleting}
+              disabled={deleteSecret.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isDeleting ? <Loader2 className="size-4 animate-spin" /> : 'Delete'}
+              {deleteSecret.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -222,7 +181,7 @@ export function SecretsTable({ secrets, projectId, envId }: SecretsTableProps) {
               <VersionHistory
                 secretId={historySecret.id}
                 secretKey={historySecret.key}
-                currentVersion={historyData.currentVersion}
+                currentVersion={historyData.secret.currentVersion}
                 versions={historyData.versions}
                 projectId={projectId}
                 envId={historySecret.source_environment_id}

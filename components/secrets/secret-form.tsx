@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ErrorAlert } from '@/components/ui/error-alert';
+import { useCreateSecret, useUpdateSecret, useSecretValue } from '@/lib/hooks/use-secrets';
 import type { ResolvedSecret } from '@/lib/secrets/inheritance';
 
 interface SecretFormProps {
@@ -17,65 +18,55 @@ interface SecretFormProps {
 }
 
 export function SecretForm({ open, onOpenChange, projectId, envId, secret }: SecretFormProps) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(false);
   const [error, setError] = useState('');
   const [key, setKey] = useState('');
   const [value, setValue] = useState('');
 
   const isEditing = !!secret;
 
+  const createSecret = useCreateSecret(projectId, envId);
+  const updateSecret = useUpdateSecret(projectId, envId, secret?.id ?? '');
+
+  const { data: secretData, isLoading: isFetching } = useSecretValue(
+    projectId,
+    envId,
+    open && secret ? secret.id : null
+  );
+
   useEffect(() => {
     if (open && secret) {
       setKey(secret.key);
       setValue('');
-      setIsFetching(true);
-      fetch(`/api/projects/${projectId}/environments/${envId}/secrets/${secret.id}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setValue(data.value || '');
-        })
-        .finally(() => {
-          setIsFetching(false);
-        });
     } else if (open) {
       setKey('');
       setValue('');
     }
     setError('');
-  }, [open, secret, projectId, envId]);
+  }, [open, secret]);
+
+  useEffect(() => {
+    if (secretData?.value) {
+      setValue(secretData.value);
+    }
+  }, [secretData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
     try {
-      const url = isEditing
-        ? `/api/projects/${projectId}/environments/${envId}/secrets/${secret.id}`
-        : `/api/projects/${projectId}/environments/${envId}/secrets`;
-
-      const res = await fetch(url, {
-        method: isEditing ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(isEditing ? { value } : { key, value }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || 'Something went wrong');
-        return;
+      if (isEditing) {
+        await updateSecret.mutateAsync({ value });
+      } else {
+        await createSecret.mutateAsync({ key, value });
       }
-
       onOpenChange(false);
-      router.refresh();
-    } catch {
-      setError('Something went wrong');
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
     }
   };
+
+  const isLoading = createSecret.isPending || updateSecret.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -85,11 +76,7 @@ export function SecretForm({ open, onOpenChange, projectId, envId, secret }: Sec
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </div>
-          )}
+          <ErrorAlert message={error} />
 
           <div className="space-y-2">
             <label htmlFor="key" className="text-sm font-medium">

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { InheritanceBadge } from './inheritance-badge';
+import { useSecretValue } from '@/lib/hooks/use-secrets';
 import type { ResolvedSecret } from '@/lib/secrets/inheritance';
 
 interface SecretRowProps {
@@ -25,42 +26,27 @@ interface SecretRowProps {
 export function SecretRow({ secret, projectId, onEdit, onDelete, onViewHistory }: SecretRowProps) {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [revealedValue, setRevealedValue] = useState<string | null>(null);
+
+  const { data: secretData, isLoading, refetch } = useSecretValue(
+    projectId,
+    secret.source_environment_id,
+    isRevealed ? secret.id : null
+  );
 
   const handleReveal = async () => {
     if (isRevealed) {
       setIsRevealed(false);
-      setRevealedValue(null);
       return;
     }
-
-    setIsLoading(true);
-    try {
-      const res = await fetch(
-        `/api/projects/${projectId}/environments/${secret.source_environment_id}/secrets/${secret.id}`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setRevealedValue(data.value);
-        setIsRevealed(true);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    setIsRevealed(true);
   };
 
   const handleCopy = async () => {
-    let valueToCopy = revealedValue;
+    let valueToCopy = secretData?.value;
 
     if (!valueToCopy) {
-      const res = await fetch(
-        `/api/projects/${projectId}/environments/${secret.source_environment_id}/secrets/${secret.id}`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        valueToCopy = data.value;
-      }
+      const result = await refetch();
+      valueToCopy = result.data?.value;
     }
 
     if (valueToCopy) {
@@ -91,7 +77,7 @@ export function SecretRow({ secret, projectId, onEdit, onDelete, onViewHistory }
                 onClick={handleCopy}
                 className="max-w-[280px] truncate rounded px-2 py-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                {isRevealed && revealedValue ? revealedValue : '••••••••••••••••••••'}
+                {isRevealed && secretData?.value ? secretData.value : '••••••••••••••••••••'}
               </button>
             </TooltipTrigger>
             <TooltipContent side="top">

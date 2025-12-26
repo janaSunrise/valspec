@@ -22,7 +22,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { MoreHorizontal, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { useUpdateProject, useDeleteProject } from '@/lib/hooks/use-projects';
 import type { Tables } from '@/types/database.types';
 
 type Project = Tables<'projects'>;
@@ -35,60 +37,34 @@ export function ProjectActions({ project }: ProjectActionsProps) {
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description || '');
   const [error, setError] = useState('');
 
+  const updateProject = useUpdateProject(project.id);
+  const deleteProject = useDeleteProject();
+
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
     try {
-      const res = await fetch(`/api/projects/${project.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || 'Failed to update project');
-        return;
-      }
-
-      const updated = await res.json();
+      const updated = await updateProject.mutateAsync({ name, description });
       setEditOpen(false);
       router.push(`/projects/${updated.slug}`);
-      router.refresh();
-    } catch {
-      setError('Something went wrong');
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update project');
     }
   };
 
   const handleDelete = async () => {
-    setIsLoading(true);
+    setError('');
 
     try {
-      const res = await fetch(`/api/projects/${project.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || 'Failed to delete project');
-        return;
-      }
-
+      await deleteProject.mutateAsync(project.id);
       router.push('/dashboard');
-      router.refresh();
-    } catch {
-      setError('Something went wrong');
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete project');
       setDeleteOpen(false);
     }
   };
@@ -123,11 +99,7 @@ export function ProjectActions({ project }: ProjectActionsProps) {
             <DialogTitle>Edit project</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
-            {error && (
-              <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </div>
-            )}
+            <ErrorAlert message={error} />
             <div className="space-y-1.5">
               <label
                 htmlFor="edit-name"
@@ -140,7 +112,7 @@ export function ProjectActions({ project }: ProjectActionsProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                disabled={isLoading}
+                disabled={updateProject.isPending}
               />
             </div>
             <div className="space-y-1.5">
@@ -154,7 +126,7 @@ export function ProjectActions({ project }: ProjectActionsProps) {
                 id="edit-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                disabled={isLoading}
+                disabled={updateProject.isPending}
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -162,12 +134,12 @@ export function ProjectActions({ project }: ProjectActionsProps) {
                 type="button"
                 variant="ghost"
                 onClick={() => setEditOpen(false)}
-                disabled={isLoading}
+                disabled={updateProject.isPending}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading || !name.trim()}>
-                {isLoading ? <Loader2 className="size-4 animate-spin" /> : 'Save'}
+              <Button type="submit" disabled={updateProject.isPending || !name.trim()}>
+                {updateProject.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Save'}
               </Button>
             </div>
           </form>
@@ -184,13 +156,13 @@ export function ProjectActions({ project }: ProjectActionsProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteProject.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={isLoading}
+              disabled={deleteProject.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isLoading ? <Loader2 className="size-4 animate-spin" /> : 'Delete'}
+              {deleteProject.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

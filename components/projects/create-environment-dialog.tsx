@@ -19,7 +19,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ColorPicker } from './color-picker';
+import { ErrorAlert } from '@/components/ui/error-alert';
 import { Plus, Loader2 } from 'lucide-react';
+import { useCreateEnvironment } from '@/lib/hooks/use-environments';
 import type { Tables } from '@/types/database.types';
 
 type Environment = Tables<'environments'>;
@@ -39,11 +41,12 @@ export function CreateEnvironmentDialog({
 }: CreateEnvironmentDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState('');
   const [color, setColor] = useState('#3b82f6');
   const [inheritsFromId, setInheritsFromId] = useState<string>('none');
   const [error, setError] = useState('');
+
+  const createEnvironment = useCreateEnvironment(projectId);
 
   const resetForm = () => {
     setName('');
@@ -54,35 +57,19 @@ export function CreateEnvironmentDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError('');
 
     try {
-      const res = await fetch(`/api/projects/${projectId}/environments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          color,
-          inherits_from_id: inheritsFromId === 'none' ? null : inheritsFromId,
-        }),
+      const env = await createEnvironment.mutateAsync({
+        name,
+        color,
+        inherits_from_id: inheritsFromId === 'none' ? null : inheritsFromId,
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || 'Failed to create environment');
-        return;
-      }
-
-      const env = await res.json();
       setOpen(false);
       resetForm();
       router.push(`/projects/${projectSlug}/${env.slug}`);
-      router.refresh();
-    } catch {
-      setError('Something went wrong');
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create environment');
     }
   };
 
@@ -109,11 +96,7 @@ export function CreateEnvironmentDialog({
           <DialogTitle>Create environment</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </div>
-          )}
+          <ErrorAlert message={error} />
 
           <div className="space-y-1.5">
             <label
@@ -128,20 +111,20 @@ export function CreateEnvironmentDialog({
               onChange={(e) => setName(e.target.value)}
               placeholder="staging"
               required
-              disabled={isLoading}
+              disabled={createEnvironment.isPending}
             />
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs uppercase tracking-widest text-muted-foreground">Color</label>
-            <ColorPicker value={color} onChange={setColor} disabled={isLoading} />
+            <ColorPicker value={color} onChange={setColor} disabled={createEnvironment.isPending} />
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs uppercase tracking-widest text-muted-foreground">
               Inherits from
             </label>
-            <Select value={inheritsFromId} onValueChange={setInheritsFromId} disabled={isLoading}>
+            <Select value={inheritsFromId} onValueChange={setInheritsFromId} disabled={createEnvironment.isPending}>
               <SelectTrigger>
                 <SelectValue placeholder="Select environment" />
               </SelectTrigger>
@@ -170,12 +153,12 @@ export function CreateEnvironmentDialog({
               type="button"
               variant="ghost"
               onClick={() => setOpen(false)}
-              disabled={isLoading}
+              disabled={createEnvironment.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !name.trim()}>
-              {isLoading ? <Loader2 className="size-4 animate-spin" /> : 'Create'}
+            <Button type="submit" disabled={createEnvironment.isPending || !name.trim()}>
+              {createEnvironment.isPending ? <Loader2 className="size-4 animate-spin" /> : 'Create'}
             </Button>
           </div>
         </form>
