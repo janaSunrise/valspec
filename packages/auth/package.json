@@ -1,0 +1,24 @@
+{
+  "name": "@valspec/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@valspec/db": "workspace:*",
+    "@valspec/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@valspec/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}
