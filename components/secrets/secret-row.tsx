@@ -19,9 +19,10 @@ interface SecretRowProps {
   envId: string;
   onEdit: (secret: ResolvedSecret) => void;
   onDelete: (secret: ResolvedSecret) => void;
+  onViewHistory: (secret: ResolvedSecret) => void;
 }
 
-export function SecretRow({ secret, projectId, onEdit, onDelete }: SecretRowProps) {
+export function SecretRow({ secret, projectId, onEdit, onDelete, onViewHistory }: SecretRowProps) {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -129,8 +130,11 @@ export function SecretRow({ secret, projectId, onEdit, onDelete }: SecretRowProp
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-36">
+            <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem onClick={() => onEdit(secret)}>Edit value</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onViewHistory(secret)}>
+                View history
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => onDelete(secret)}
                 className="text-destructive focus:text-destructive"

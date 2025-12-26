@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Loader2, KeyRound, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SecretRow } from './secret-row';
 import { SecretForm } from './secret-form';
+import { VersionHistory } from './version-history';
 import type { ResolvedSecret } from '@/lib/secrets/inheritance';
 
 interface SecretsTableProps {
@@ -24,12 +26,26 @@ interface SecretsTableProps {
   envId: string;
 }
 
+interface VersionData {
+  id: string;
+  version: number;
+  changeType: string;
+  changeSource: string;
+  createdAt: string;
+}
+
 export function SecretsTable({ secrets, projectId, envId }: SecretsTableProps) {
   const router = useRouter();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingSecret, setEditingSecret] = useState<ResolvedSecret | null>(null);
   const [deletingSecret, setDeletingSecret] = useState<ResolvedSecret | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [historySecret, setHistorySecret] = useState<ResolvedSecret | null>(null);
+  const [historyData, setHistoryData] = useState<{
+    currentVersion: number;
+    versions: VersionData[];
+  } | null>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   const handleEdit = (secret: ResolvedSecret) => {
     setEditingSecret(secret);
@@ -39,6 +55,37 @@ export function SecretsTable({ secrets, projectId, envId }: SecretsTableProps) {
   const handleDelete = (secret: ResolvedSecret) => {
     setDeletingSecret(secret);
   };
+
+  const handleViewHistory = (secret: ResolvedSecret) => {
+    setHistorySecret(secret);
+  };
+
+  useEffect(() => {
+    if (!historySecret) {
+      setHistoryData(null);
+      return;
+    }
+
+    const fetchHistory = async () => {
+      setIsLoadingHistory(true);
+      try {
+        const res = await fetch(
+          `/api/projects/${projectId}/environments/${historySecret.source_environment_id}/secrets/${historySecret.id}/versions`
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setHistoryData({
+            currentVersion: data.secret.currentVersion,
+            versions: data.versions,
+          });
+        }
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    fetchHistory();
+  }, [historySecret, projectId]);
 
   const confirmDelete = async () => {
     if (!deletingSecret) return;
@@ -109,6 +156,7 @@ export function SecretsTable({ secrets, projectId, envId }: SecretsTableProps) {
               envId={envId}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onViewHistory={handleViewHistory}
             />
           ))}
         </div>
@@ -156,6 +204,37 @@ export function SecretsTable({ secrets, projectId, envId }: SecretsTableProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!historySecret} onOpenChange={() => setHistorySecret(null)}>
+        <DialogContent className="max-w-sm p-0 gap-0">
+          <DialogHeader className="px-4 pt-4 pb-2">
+            <DialogTitle className="text-base font-medium">
+              <code className="font-mono">{historySecret?.key}</code>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="max-h-[320px] overflow-y-auto px-2 pb-3">
+            {isLoadingHistory ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : historyData && historySecret ? (
+              <VersionHistory
+                secretId={historySecret.id}
+                secretKey={historySecret.key}
+                currentVersion={historyData.currentVersion}
+                versions={historyData.versions}
+                projectId={projectId}
+                envId={historySecret.source_environment_id}
+              />
+            ) : (
+              <div className="py-10 text-center text-sm text-muted-foreground">
+                Failed to load history
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
