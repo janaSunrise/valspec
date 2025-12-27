@@ -1,10 +1,10 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
+import { RPCHandler } from "@orpc/server/fetch";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
-import { onError } from "@orpc/server";
-import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
+import { onError } from "@orpc/server";
 
 import { createContext } from "@valspec/api/context";
 import { appRouter } from "@valspec/api/routers/index";

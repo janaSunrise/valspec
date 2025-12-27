@@ -99,8 +99,7 @@ export function resolveSecrets(
   // Child secrets override parent secrets
   const secretMap = new Map<string, ResolvedSecret>();
 
-  for (let i = chain.length - 1; i >= 0; i--) {
-    const envId = chain[i];
+  for (const envId of chain.toReversed()) {
     const envSecrets = secretsByEnv.get(envId) ?? [];
     const isCurrentEnv = envId === environmentId;
 

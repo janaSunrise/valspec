@@ -13,32 +13,42 @@ const projectIdSchema = z.object({ projectId: z.cuid() });
 const envIdSchema = z.object({ projectId: z.cuid(), envId: z.cuid() });
 
 export const environmentsRouter = {
-  list: protectedProcedure.input(projectIdSchema).handler(async ({ context, input }) => {
-    await requireProjectAccess(input.projectId, context.session.user.id);
+  list: protectedProcedure
+    .input(projectIdSchema)
+    .use(async ({ context, next }, input) => {
+      await requireProjectAccess(input.projectId, context.session.user.id);
+      return next({ context });
+    })
+    .handler(async ({ input }) => {
+      const environments = await prisma.environment.findMany({
+        where: { projectId: input.projectId },
+        orderBy: { createdAt: "asc" },
+      });
 
-    const environments = await prisma.environment.findMany({
-      where: { projectId: input.projectId },
-      orderBy: { createdAt: "asc" },
-    });
+      return environments;
+    }),
 
-    return environments;
-  }),
+  get: protectedProcedure
+    .input(envIdSchema)
+    .use(async ({ context, next }, input) => {
+      await requireEnvAccess(input.projectId, input.envId, context.session.user.id);
+      return next({ context });
+    })
+    .handler(async ({ input }) => {
+      const environment = await prisma.environment.findUniqueOrThrow({
+        where: { id: input.envId },
+      });
 
-  get: protectedProcedure.input(envIdSchema).handler(async ({ context, input }) => {
-    const { environment } = await requireEnvAccess(
-      input.projectId,
-      input.envId,
-      context.session.user.id,
-    );
-
-    return environment;
-  }),
+      return environment;
+    }),
 
   create: protectedProcedure
-    .input(projectIdSchema.merge(createEnvironmentSchema))
-    .handler(async ({ context, input }) => {
+    .input(z.object({ ...projectIdSchema.shape, ...createEnvironmentSchema.shape }))
+    .use(async ({ context, next }, input) => {
       await requireProjectAccess(input.projectId, context.session.user.id);
-
+      return next({ context });
+    })
+    .handler(async ({ input }) => {
       const slug = slugify(input.name);
       if (!slug) {
         throw new ORPCError("BAD_REQUEST", { message: "Invalid environment name" });
@@ -80,10 +90,12 @@ export const environmentsRouter = {
     }),
 
   update: protectedProcedure
-    .input(envIdSchema.merge(updateEnvironmentSchema))
-    .handler(async ({ context, input }) => {
+    .input(z.object({ ...envIdSchema.shape, ...updateEnvironmentSchema.shape }))
+    .use(async ({ context, next }, input) => {
       await requireEnvAccess(input.projectId, input.envId, context.session.user.id);
-
+      return next({ context });
+    })
+    .handler(async ({ input }) => {
       const updates: {
         name?: string;
         slug?: string;
@@ -166,25 +178,29 @@ export const environmentsRouter = {
       return environment;
     }),
 
-  delete: protectedProcedure.input(envIdSchema).handler(async ({ context, input }) => {
-    await requireEnvAccess(input.projectId, input.envId, context.session.user.id);
-
-    // Check if other environments inherit from this one
-    const dependents = await prisma.environment.findMany({
-      where: { inheritsFromId: input.envId },
-      select: { name: true },
-    });
-
-    if (dependents.length > 0) {
-      throw new ORPCError("BAD_REQUEST", {
-        message: `Cannot delete: ${dependents.map((e) => e.name).join(", ")} inherit from this environment`,
+  delete: protectedProcedure
+    .input(envIdSchema)
+    .use(async ({ context, next }, input) => {
+      await requireEnvAccess(input.projectId, input.envId, context.session.user.id);
+      return next({ context });
+    })
+    .handler(async ({ input }) => {
+      // Check if other environments inherit from this one
+      const dependents = await prisma.environment.findMany({
+        where: { inheritsFromId: input.envId },
+        select: { name: true },
       });
-    }
 
-    await prisma.environment.delete({
-      where: { id: input.envId },
-    });
+      if (dependents.length > 0) {
+        throw new ORPCError("BAD_REQUEST", {
+          message: `Cannot delete: ${dependents.map((e) => e.name).join(", ")} inherit from this environment`,
+        });
+      }
 
-    return { success: true };
-  }),
+      await prisma.environment.delete({
+        where: { id: input.envId },
+      });
+
+      return { success: true };
+    }),
 };

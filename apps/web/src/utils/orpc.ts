@@ -1,11 +1,12 @@
-import type { AppRouterClient } from "@valspec/api/routers/index";
-
+import { toast } from "sonner";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
+
 import { env } from "@valspec/env/web";
-import { toast } from "sonner";
+
+import type { AppRouterClient } from "@valspec/api/routers/index";
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({

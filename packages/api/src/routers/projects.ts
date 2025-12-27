@@ -74,10 +74,12 @@ export const projectsRouter = {
   }),
 
   update: protectedProcedure
-    .input(projectIdSchema.merge(updateProjectSchema))
-    .handler(async ({ context, input }) => {
+    .input(z.object({ ...projectIdSchema.shape, ...updateProjectSchema.shape }))
+    .use(async ({ context, next }, input) => {
       await requireProjectAccess(input.projectId, context.session.user.id);
-
+      return next({ context });
+    })
+    .handler(async ({ context, input }) => {
       const updates: { name?: string; slug?: string; description?: string | null } = {};
 
       if (input.name !== undefined) {
@@ -120,13 +122,17 @@ export const projectsRouter = {
       return project;
     }),
 
-  delete: protectedProcedure.input(projectIdSchema).handler(async ({ context, input }) => {
-    await requireProjectAccess(input.projectId, context.session.user.id);
+  delete: protectedProcedure
+    .input(projectIdSchema)
+    .use(async ({ context, next }, input) => {
+      await requireProjectAccess(input.projectId, context.session.user.id);
+      return next({ context });
+    })
+    .handler(async ({ input }) => {
+      await prisma.project.delete({
+        where: { id: input.projectId },
+      });
 
-    await prisma.project.delete({
-      where: { id: input.projectId },
-    });
-
-    return { success: true };
-  }),
+      return { success: true };
+    }),
 };
