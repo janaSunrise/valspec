@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Valspec is a TypeScript monorepo using the Better-T-Stack. It's a full-stack application with a Next.js frontend, Elysia backend, and oRPC for type-safe API communication.
 
-i want to build an app that helps store environmental variables and secrets securely, across multiple projects, with multiple environments. help me build a robust and secure app that scales to do this.
+This project helps store secrets and configurations securely, across multiple projects, with multiple environments. help me build a robust and secure app that scales to do this.
 
-Valspec is a full-stack project that uses:
+Valspec uses:
 
 - NextJS with shadcn for frontend
 - Elysia for backend
@@ -23,16 +23,6 @@ Valspec is a full-stack project that uses:
 The code has been generated and structured to follow best practices for security, scalability, and maintainability. All the apps
 and services that run are added to `apps` directory, and shared code is in `packages` directory. Anything related to the infrastructure,
 or tooling goes into the `packages` directory.
-
-I'm currently rewriting the project in this new stack. All the legacy code to be migrated is in the `old` directory.
-
-The project used:
-
-- Next.js for frontend and backend
-- Supabase for database
-- Shadcn/ui for UI components
-
-I'm going to migrate the legacy code to the new stack step by step. Do as instructed.
 
 ## Commands
 

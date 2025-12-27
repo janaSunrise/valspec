@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTransitionRouter } from "next-view-transitions";
 import { useMutation } from "@tanstack/react-query";
 import { MoreHorizontal, Pencil, Trash2, Loader2 } from "lucide-react";
@@ -70,6 +70,13 @@ export function EnvironmentActions({
     environment.inheritsFromId || "none",
   );
 
+  // Sync form state when environment prop changes
+  useEffect(() => {
+    setName(environment.name);
+    setColor(environment.color || "#6366f1");
+    setInheritsFromId(environment.inheritsFromId || "none");
+  }, [environment.id, environment.name, environment.color, environment.inheritsFromId]);
+
   const selectedEnv = environments.find((e) => e.id === inheritsFromId);
 
   const updateEnvironment = useMutation({
@@ -77,6 +84,7 @@ export function EnvironmentActions({
       client.environments.update({ projectId, envId: environment.id, ...data }),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["secrets", projectId, environment.id] });
       setEditOpen(false);
       toast.success("Environment updated");
       router.push(`/projects/${projectId}?env=${updated.id}`);
