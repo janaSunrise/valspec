@@ -8,7 +8,13 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -131,8 +137,10 @@ export function EnvironmentActions({
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="outline" size="icon-sm" className="size-8" />}>
-          <MoreHorizontal className="size-4" />
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="icon-sm" className="size-8">
+            <MoreHorizontal className="size-4" />
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setEditOpen(true)}>
@@ -181,7 +189,7 @@ export function EnvironmentActions({
               <FieldLabel>Inherits from</FieldLabel>
               <Select
                 value={inheritsFromId}
-                onValueChange={(value) => value !== null && setInheritsFromId(value)}
+                onValueChange={setInheritsFromId}
                 disabled={updateEnvironment.isPending}
               >
                 <SelectTrigger>
@@ -246,7 +254,11 @@ export function EnvironmentActions({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteEnvironment.isPending}>Cancel</AlertDialogCancel>
-            <Button onClick={handleDelete} disabled={deleteEnvironment.isPending} variant="destructive">
+            <Button
+              onClick={handleDelete}
+              disabled={deleteEnvironment.isPending}
+              variant="destructive"
+            >
               {deleteEnvironment.isPending ? <Loader2 className="size-4 animate-spin" /> : "Delete"}
             </Button>
           </AlertDialogFooter>

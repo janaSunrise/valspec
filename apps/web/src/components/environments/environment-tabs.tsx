@@ -49,24 +49,22 @@ export function EnvironmentTabs({ projectId, environments, activeEnvId }: Enviro
         );
       })}
 
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <CreateEnvironmentDialog
-              projectId={projectId}
-              environments={environments}
-              trigger={
-                <button className="ml-1 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-background/60 hover:text-foreground">
-                  <Plus className="size-4" />
-                </button>
-              }
-            />
-          }
-        />
-        <TooltipContent side="bottom">
-          <p>Add environment</p>
-        </TooltipContent>
-      </Tooltip>
+      <CreateEnvironmentDialog
+        projectId={projectId}
+        environments={environments}
+        trigger={
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="ml-1 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-background/60 hover:text-foreground">
+                <Plus className="size-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>Add environment</p>
+            </TooltipContent>
+          </Tooltip>
+        }
+      />
     </div>
   );
 }

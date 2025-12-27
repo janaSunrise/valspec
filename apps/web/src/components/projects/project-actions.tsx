@@ -96,8 +96,10 @@ export function ProjectActions({ project }: ProjectActionsProps) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="icon-sm" className="size-7" />}>
-          <MoreHorizontal className="size-4" />
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon-sm" className="size-7">
+            <MoreHorizontal className="size-4" />
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setEditOpen(true)}>

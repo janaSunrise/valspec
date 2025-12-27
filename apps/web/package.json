@@ -8,7 +8,6 @@
     "start": "next start"
   },
   "dependencies": {
-    "@base-ui/react": "^1.0.0",
     "@orpc/client": "catalog:",
     "@orpc/server": "catalog:",
     "@orpc/tanstack-query": "^1.12.2",
@@ -31,6 +30,7 @@
     "next": "^16.1.0",
     "next-themes": "^0.4.6",
     "next-view-transitions": "^0.3.5",
+    "radix-ui": "^1.4.3",
     "react": "^19.2.3",
     "react-day-picker": "^9.13.0",
     "react-dom": "^19.2.3",

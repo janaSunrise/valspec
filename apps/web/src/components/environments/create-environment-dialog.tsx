@@ -87,10 +87,8 @@ export function CreateEnvironmentDialog({
     if (!isOpen) resetForm();
   };
 
-  const handleInheritsChange = (value: string | null) => {
-    if (value !== null) {
-      setInheritsFromId(value);
-    }
+  const handleInheritsChange = (value: string) => {
+    setInheritsFromId(value);
   };
 
   const selectedEnv = environments.find((e) => e.id === inheritsFromId);
@@ -104,7 +102,7 @@ export function CreateEnvironmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={trigger ?? defaultTrigger} />
+      <DialogTrigger asChild>{trigger ?? defaultTrigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create environment</DialogTitle>
@@ -124,11 +122,7 @@ export function CreateEnvironmentDialog({
 
           <Field>
             <FieldLabel>Color</FieldLabel>
-            <ColorPicker
-              value={color}
-              onChange={setColor}
-              disabled={createEnvironment.isPending}
-            />
+            <ColorPicker value={color} onChange={setColor} disabled={createEnvironment.isPending} />
           </Field>
 
           <Field>
