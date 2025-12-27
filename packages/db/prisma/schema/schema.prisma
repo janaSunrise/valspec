@@ -1,0 +1,148 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated"
+  moduleFormat = "esm"
+  runtime      = "bun"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AuditAction {
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_DELETED
+  ENVIRONMENT_CREATED
+  ENVIRONMENT_UPDATED
+  ENVIRONMENT_DELETED
+  SECRET_CREATED
+  SECRET_UPDATED
+  SECRET_DELETED
+  SECRET_VIEWED
+  API_KEY_CREATED
+  API_KEY_REVOKED
+}
+
+enum ActorType {
+  USER
+  API_KEY
+}
+
+enum ChangeType {
+  CREATED
+  UPDATED
+  DELETED
+  ROLLBACK
+}
+
+enum ChangeSource {
+  WEB
+  API
+  CLI
+  IMPORT
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  userId      String // References User.id from auth schema
+  name        String
+  slug        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  environments Environment[]
+  auditLogs    AuditLog[]
+
+  @@unique([userId, slug])
+  @@index([userId])
+  @@index([slug])
+  @@map("project")
+}
+
+model Environment {
+  id             String        @id @default(cuid())
+  projectId      String
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name           String
+  slug           String
+  color          String        @default("#6366f1")
+  inheritsFromId String?
+  inheritsFrom   Environment?  @relation("EnvironmentInheritance", fields: [inheritsFromId], references: [id], onDelete: SetNull)
+  inheritedBy    Environment[] @relation("EnvironmentInheritance")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  secrets   Secret[]
+  auditLogs AuditLog[]
+
+  @@unique([projectId, slug])
+  @@index([projectId])
+  @@index([inheritsFromId])
+  @@map("environment")
+}
+
+model Secret {
+  id             String      @id @default(cuid())
+  environmentId  String
+  environment    Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  key            String
+  encryptedValue String
+  iv             String
+  authTag        String
+  version        Int         @default(1)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  versions SecretVersion[]
+
+  @@unique([environmentId, key])
+  @@index([environmentId])
+  @@map("secret")
+}
+
+model SecretVersion {
+  id             String       @id @default(cuid())
+  secretId       String
+  secret         Secret       @relation(fields: [secretId], references: [id], onDelete: Cascade)
+  version        Int
+  encryptedValue String
+  iv             String
+  authTag        String
+  changeType     ChangeType
+  changeSource   ChangeSource
+  createdAt      DateTime     @default(now())
+
+  @@unique([secretId, version])
+  @@index([secretId])
+  @@index([createdAt(sort: Desc)])
+  @@map("secret_version")
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  projectId      String?
+  project        Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  environmentId  String?
+  environment    Environment? @relation(fields: [environmentId], references: [id], onDelete: SetNull)
+  secretId       String?
+  action         AuditAction
+  actorType      ActorType
+  actorId        String?
+  actorUserId    String? // References User.id from auth schema when actorType is USER
+  actorIp        String?
+  actorUserAgent String?
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([projectId, environmentId])
+  @@index([createdAt(sort: Desc)])
+  @@index([action])
+  @@index([actorType, actorId])
+  @@index([actorUserId])
+  @@map("audit_log")
+}
+
+// NOTE: API keys are managed by Better Auth's apiKey plugin
+// Use metadata field to store projectId/environmentId scope

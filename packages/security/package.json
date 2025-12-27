@@ -1,0 +1,20 @@
+{
+  "name": "@valspec/security",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@valspec/env": "workspace:*"
+  },
+  "devDependencies": {
+    "@valspec/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

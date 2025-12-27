@@ -1,0 +1,30 @@
+{
+  "name": "@valspec/api",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@orpc/client": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "@orpc/server": "catalog:",
+    "@orpc/zod": "catalog:",
+    "@valspec/auth": "workspace:*",
+    "@valspec/db": "workspace:*",
+    "@valspec/env": "workspace:*",
+    "@valspec/security": "workspace:*",
+    "dotenv": "catalog:",
+    "elysia": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@valspec/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}
