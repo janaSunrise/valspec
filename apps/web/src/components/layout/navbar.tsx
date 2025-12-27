@@ -6,7 +6,7 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import { SignOutButton } from "@/components/auth/sign-out-button";
+import { UserMenu } from "@/components/layout/user-menu";
 
 import { Logo } from "./logo";
 
@@ -31,10 +31,7 @@ export async function Navbar({ border = true }: NavbarProps) {
         </Link>
         <nav className="flex items-center gap-4">
           {user ? (
-            <>
-              <span className="text-xs text-muted-foreground">{user.email}</span>
-              <SignOutButton />
-            </>
+            <UserMenu user={user} />
           ) : (
             <Button size="sm">
               <Link href="/login" className="inline-flex items-center gap-1.5">

@@ -16,6 +16,10 @@ export const projectsRouter = {
       where: { userId: context.session.user.id },
       include: {
         _count: { select: { environments: true } },
+        environments: {
+          select: { id: true, name: true, slug: true },
+          orderBy: { createdAt: "asc" },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
