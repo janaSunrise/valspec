@@ -7,7 +7,6 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Logo } from "@/components/layout/logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,7 +55,6 @@ export default function LoginPage() {
     <div className="w-full max-w-sm">
       <div className="rounded-2xl border border-border/50 bg-card/50 p-8 shadow-xl shadow-black/5 backdrop-blur-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <Logo size="lg" className="mb-6" />
           <h1 className="text-xl font-semibold tracking-tight">
             {isSignUp ? "Create your account" : "Welcome back"}
           </h1>

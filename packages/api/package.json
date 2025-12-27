@@ -18,6 +18,7 @@
     "@valspec/auth": "workspace:*",
     "@valspec/db": "workspace:*",
     "@valspec/env": "workspace:*",
+    "@valspec/security": "workspace:*",
     "dotenv": "catalog:",
     "elysia": "catalog:",
     "zod": "catalog:"

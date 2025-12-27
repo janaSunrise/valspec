@@ -101,6 +101,7 @@
         "@valspec/auth": "workspace:*",
         "@valspec/db": "workspace:*",
         "@valspec/env": "workspace:*",
+        "@valspec/security": "workspace:*",
         "dotenv": "catalog:",
         "elysia": "catalog:",
         "zod": "catalog:",
@@ -156,6 +157,16 @@
       },
       "devDependencies": {
         "@types/bun": "catalog:",
+        "@valspec/config": "workspace:*",
+        "typescript": "catalog:",
+      },
+    },
+    "packages/security": {
+      "name": "@valspec/security",
+      "dependencies": {
+        "@valspec/env": "workspace:*",
+      },
+      "devDependencies": {
         "@valspec/config": "workspace:*",
         "typescript": "catalog:",
       },
@@ -676,6 +687,8 @@
     "@valspec/db": ["@valspec/db@workspace:packages/db"],
 
     "@valspec/env": ["@valspec/env@workspace:packages/env"],
+
+    "@valspec/security": ["@valspec/security@workspace:packages/security"],
 
     "accepts": ["accepts@2.0.0", "", { "dependencies": { "mime-types": "^3.0.0", "negotiator": "^1.0.0" } }, "sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng=="],
 

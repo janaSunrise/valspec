@@ -6,9 +6,9 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 import { Logo } from "./logo";
-import { SignOutButton } from "../auth/sign-out-button";
 
 type NavbarProps = {
   border?: boolean;
@@ -36,7 +36,7 @@ export async function Navbar({ border = true }: NavbarProps) {
               <SignOutButton />
             </>
           ) : (
-            <Button size="sm" asChild>
+            <Button size="sm">
               <Link href="/login" className="inline-flex items-center gap-1.5">
                 Sign In
                 <ArrowRight className="size-3" />
