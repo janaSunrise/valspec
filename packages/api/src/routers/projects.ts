@@ -4,7 +4,7 @@ import { z } from "zod";
 import prisma from "@valspec/db";
 
 import { protectedProcedure } from "../index";
-import { requireProjectAccess, requireProjectWithEnvs } from "../utils/ownership";
+import { requireProjectAccess, requireProjectWithEnvs } from "../lib/ownership";
 import { slugify } from "../lib/utils";
 import { createProjectSchema, updateProjectSchema } from "../schemas/project";
 
