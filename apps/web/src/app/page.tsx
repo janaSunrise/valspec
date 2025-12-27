@@ -58,7 +58,7 @@ function AppPreview() {
             <span className="rounded-md bg-muted px-2 py-0.5 text-muted-foreground">
               my-saas-app
             </span>
-            <span className="text-muted-foreground/30">/</span>
+            <span className="text-muted-foreground">/</span>
             <span className="rounded-md bg-primary/15 px-2 py-0.5 font-medium text-primary">
               production
             </span>
@@ -93,9 +93,9 @@ function Terminal() {
     <div className="h-full overflow-hidden rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm">
       <div className="flex items-center gap-2 border-b border-border/50 bg-muted/20 px-4 py-2.5">
         <div className="flex gap-1.5">
-          <div className="size-2.5 rounded-full bg-muted-foreground/20" />
-          <div className="size-2.5 rounded-full bg-muted-foreground/20" />
-          <div className="size-2.5 rounded-full bg-muted-foreground/20" />
+          <div className="size-2.5 rounded-full bg-muted-foreground/40" />
+          <div className="size-2.5 rounded-full bg-muted-foreground/40" />
+          <div className="size-2.5 rounded-full bg-muted-foreground/40" />
         </div>
         <span className="ml-2 text-xs text-muted-foreground">terminal</span>
       </div>
@@ -109,21 +109,21 @@ function Terminal() {
         </div>
 
         <div className="mt-4 text-sm">
-          <span className="text-muted-foreground/70">{"{"}</span>
+          <span className="text-muted-foreground">{"{"}</span>
           <div className="ml-4 space-y-0.5">
             <div>
               <span className="text-primary">&quot;DATABASE_URL&quot;</span>
-              <span className="text-muted-foreground/70">: </span>
-              <span className="text-green-400">&quot;postgres://...&quot;</span>
-              <span className="text-muted-foreground/70">,</span>
+              <span className="text-muted-foreground">: </span>
+              <span className="text-green-600 dark:text-green-400">&quot;postgres://...&quot;</span>
+              <span className="text-muted-foreground">,</span>
             </div>
             <div>
               <span className="text-primary">&quot;STRIPE_KEY&quot;</span>
-              <span className="text-muted-foreground/70">: </span>
-              <span className="text-green-400">&quot;sk_live_...&quot;</span>
+              <span className="text-muted-foreground">: </span>
+              <span className="text-green-600 dark:text-green-400">&quot;sk_live_...&quot;</span>
             </div>
           </div>
-          <span className="text-muted-foreground/70">{"}"}</span>
+          <span className="text-muted-foreground">{"}"}</span>
         </div>
 
         <div className="mt-4 flex items-center gap-2">

@@ -3,7 +3,7 @@
 import { use, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Loader2, Plus, ShieldCheck } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, Frown } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { toast } from "sonner";
 
@@ -207,7 +207,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               <span className="ml-2 text-xs text-muted-foreground">
                 {ownSecrets}
                 {inheritedSecrets > 0 && (
-                  <span className="text-muted-foreground/60"> · {inheritedSecrets} inherited</span>
+                  <span className="text-muted-foreground"> · {inheritedSecrets} inherited</span>
                 )}
               </span>
             )}
@@ -240,10 +240,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         ) : (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-              <ShieldCheck className="size-5 text-muted-foreground" />
+              <Frown className="size-5 text-muted-foreground" />
             </div>
-            <p className="mt-4 text-sm font-medium text-muted-foreground">No secrets yet</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">
+            <p className="mt-4 text-sm font-medium">No secrets yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">
               Add your first secret to get started
             </p>
           </div>

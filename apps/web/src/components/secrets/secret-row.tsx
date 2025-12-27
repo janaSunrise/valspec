@@ -80,7 +80,7 @@ export function SecretRow({
 
       {/* Inherited badge */}
       {secret.inherited && secret.sourceEnvironmentName && (
-        <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground/70">
+        <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
           <GitBranch className="size-3" />
           {secret.sourceEnvironmentName}
         </span>
@@ -94,7 +94,7 @@ export function SecretRow({
           <span
             className={cn(
               "font-mono text-xs",
-              isRevealed && data?.value ? "text-foreground" : "text-muted-foreground/50",
+              isRevealed && data?.value ? "text-foreground" : "text-muted-foreground",
             )}
           >
             {isRevealed && data?.value
@@ -107,7 +107,7 @@ export function SecretRow({
       </div>
 
       {/* Version */}
-      <span className="w-6 text-center text-[10px] tabular-nums text-muted-foreground/60">
+      <span className="w-6 text-center text-[11px] tabular-nums text-muted-foreground">
         v{secret.version}
       </span>
 

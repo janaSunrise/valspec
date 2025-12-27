@@ -37,7 +37,7 @@ export function EnvironmentTabs({ projectId, environments, activeEnvId }: Enviro
               "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-all duration-150",
               isActive
                 ? "bg-background text-foreground shadow-sm ring-1 ring-border"
-                : "text-foreground/60 hover:bg-background/60 hover:text-foreground",
+                : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
             )}
           >
             <span
