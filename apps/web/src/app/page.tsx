@@ -1,6 +1,7 @@
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { ArrowRight, Copy, Eye, EyeOff, GitBranch, Lock } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { GridPattern } from "@/components/layout/grid-pattern";
@@ -196,12 +197,11 @@ export default function LandingPage() {
                 version history, and a simple API for your CI/CD.
               </p>
 
-              <Link
-                href="/login"
-                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                Start building
-                <ArrowRight className="size-3.5" />
+              <Link href="/login">
+                <Button size="lg">
+                  Start building
+                  <ArrowRight className="size-3.5" />
+                </Button>
               </Link>
             </div>
 

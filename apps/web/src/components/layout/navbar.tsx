@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { headers } from "next/headers";
 import { ArrowRight } from "lucide-react";
 
