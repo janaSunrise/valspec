@@ -3,6 +3,9 @@
     "shadcn": {
       "command": "npx",
       "args": ["shadcn@latest", "mcp"]
+    },
+    "inkeepMcp": {
+      "url": "https://mcp.inkeep.com/zod/mcp"
     }
   }
 }
