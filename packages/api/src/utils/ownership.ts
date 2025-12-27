@@ -6,10 +6,7 @@ import prisma from "@valspec/db";
  * Verifies the user owns the project.
  * Throws NOT_FOUND if project doesn't exist or user doesn't own it.
  */
-export async function requireProjectAccess(
-  projectId: string,
-  userId: string,
-) {
+export async function requireProjectAccess(projectId: string, userId: string) {
   const project = await prisma.project.findFirst({
     where: { id: projectId, userId },
   });
@@ -25,11 +22,7 @@ export async function requireProjectAccess(
  * Verifies the user owns the project and the environment belongs to that project.
  * Throws NOT_FOUND if project or environment doesn't exist or user doesn't own them.
  */
-export async function requireEnvAccess(
-  projectId: string,
-  envId: string,
-  userId: string,
-) {
+export async function requireEnvAccess(projectId: string, envId: string, userId: string) {
   const environment = await prisma.environment.findFirst({
     where: {
       id: envId,
@@ -88,10 +81,7 @@ export async function requireSecretAccess(
  * Fetches a project with all its environments.
  * Throws NOT_FOUND if project doesn't exist or user doesn't own it.
  */
-export async function requireProjectWithEnvs(
-  projectId: string,
-  userId: string,
-) {
+export async function requireProjectWithEnvs(projectId: string, userId: string) {
   const project = await prisma.project.findFirst({
     where: { id: projectId, userId },
     include: {

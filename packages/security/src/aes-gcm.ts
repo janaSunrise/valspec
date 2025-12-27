@@ -62,10 +62,7 @@ async function getMasterKey(masterKeyBase64: string): Promise<CryptoKey> {
  * @param masterKeyBase64 - Base64 encoded 32-byte master key
  * @returns Encrypted data with ciphertext, IV, and auth tag (all base64 encoded)
  */
-export async function encrypt(
-  plaintext: string,
-  masterKeyBase64: string,
-): Promise<EncryptedData> {
+export async function encrypt(plaintext: string, masterKeyBase64: string): Promise<EncryptedData> {
   const masterKey = await getMasterKey(masterKeyBase64);
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
   const encoder = new TextEncoder();
@@ -97,10 +94,7 @@ export async function encrypt(
  * @returns Decrypted plaintext string
  * @throws CryptoError if decryption fails (auth tag mismatch)
  */
-export async function decrypt(
-  data: EncryptedData,
-  masterKeyBase64: string,
-): Promise<string> {
+export async function decrypt(data: EncryptedData, masterKeyBase64: string): Promise<string> {
   const masterKey = await getMasterKey(masterKeyBase64);
   const iv = base64ToUint8Array(data.iv);
   const authTag = base64ToUint8Array(data.authTag);
