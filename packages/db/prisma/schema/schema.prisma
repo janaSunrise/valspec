@@ -33,6 +33,7 @@ enum ChangeType {
   CREATED
   UPDATED
   DELETED
+  ROLLBACK
 }
 
 enum ChangeSource {
