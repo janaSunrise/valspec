@@ -3,7 +3,7 @@
 import { use, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Loader2, Plus, Frown } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, Frown, Upload, Download } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { toast } from "sonner";
 
@@ -23,6 +23,8 @@ import { ProjectActions } from "@/components/projects/project-actions";
 import { SecretRow } from "@/components/secrets/secret-row";
 import { SecretDialog } from "@/components/secrets/secret-dialog";
 import { VersionHistory } from "@/components/secrets/version-history";
+import { ExportDialog } from "@/components/secrets/export-dialog";
+import { ImportDialog } from "@/components/secrets/import-dialog";
 import { client, queryClient } from "@/utils/orpc";
 
 import type { Secret } from "@/components/secrets/secret-row";
@@ -42,6 +44,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const [editingSecret, setEditingSecret] = useState<Secret | null>(null);
   const [deletingSecret, setDeletingSecret] = useState<Secret | null>(null);
   const [historySecret, setHistorySecret] = useState<Secret | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   const {
     data: project,
@@ -212,10 +216,20 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               </span>
             )}
           </div>
-          <Button size="sm" variant="outline" onClick={handleAddSecret}>
-            <Plus className="mr-1.5 size-3.5" />
-            Add
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" onClick={() => setImportDialogOpen(true)}>
+              <Upload className="mr-1.5 size-3.5" />
+              Import
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setExportDialogOpen(true)}>
+              <Download className="mr-1.5 size-3.5" />
+              Export
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleAddSecret}>
+              <Plus className="mr-1.5 size-3.5" />
+              Add
+            </Button>
+          </div>
         </div>
 
         {/* Secrets List */}
@@ -293,6 +307,22 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import/Export Dialogs */}
+      <ImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        projectId={projectId}
+        envId={activeEnv.id}
+        envName={activeEnv.name}
+      />
+      <ExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        projectId={projectId}
+        envId={activeEnv.id}
+        envName={activeEnv.name}
+      />
     </div>
   );
 }

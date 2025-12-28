@@ -3,10 +3,9 @@ import { z } from "zod";
 
 import prisma from "@valspec/db";
 
-import { protectedProcedure } from "../index";
-import { requireSecretAccess } from "../lib/ownership";
-
-const secretIdSchema = z.object({ projectId: z.cuid(), envId: z.cuid(), secretId: z.cuid() });
+import { protectedProcedure } from "../../procedures";
+import { requireSecretAccess } from "../../lib/ownership";
+import { secretIdSchema } from "../../schemas";
 
 export const versionsRouter = {
   list: protectedProcedure

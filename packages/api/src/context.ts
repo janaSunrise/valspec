@@ -2,11 +2,8 @@ import type { Context as ElysiaContext } from "elysia";
 
 import { auth } from "@valspec/auth";
 
-import {
-  apiKeyMetadataSchema,
-  type ApiKeyMetadata,
-  type ApiKeyPermission,
-} from "./schemas/api-key";
+import { parseApiKeyMetadataWithValidation } from "./lib/metadata";
+import type { ApiKeyMetadata, ApiKeyPermission } from "./schemas/api-key";
 
 export type CreateContextOptions = {
   context: ElysiaContext;
@@ -18,9 +15,7 @@ export type ApiKeyData = {
   permissions: ApiKeyPermission[];
 };
 
-async function verifyApiKeyFromHeader(
-  apiKeyHeader: string | null,
-): Promise<ApiKeyData | null> {
+async function verifyApiKeyFromHeader(apiKeyHeader: string | null): Promise<ApiKeyData | null> {
   if (!apiKeyHeader) return null;
 
   try {
@@ -31,16 +26,10 @@ async function verifyApiKeyFromHeader(
     if (!result.valid || !result.key) return null;
 
     const key = result.key;
-    if (!key.enabled || !key.metadata) return null;
+    if (!key.enabled) return null;
 
-    // Parse and validate metadata with Zod
-    const rawMetadata =
-      typeof key.metadata === "string" ? JSON.parse(key.metadata) : key.metadata;
-
-    const parsed = apiKeyMetadataSchema.safeParse(rawMetadata);
-    if (!parsed.success) return null;
-
-    const metadata = parsed.data;
+    const metadata = parseApiKeyMetadataWithValidation(key.metadata);
+    if (!metadata) return null;
 
     return {
       userId: key.userId,

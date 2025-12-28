@@ -14,3 +14,11 @@ export const secretKeySchema = z
   );
 
 export const cuidSchema = z.cuid();
+
+export const projectIdSchema = z.object({ projectId: cuidSchema });
+export const envIdSchema = z.object({ projectId: cuidSchema, envId: cuidSchema });
+export const secretIdSchema = z.object({
+  projectId: cuidSchema,
+  envId: cuidSchema,
+  secretId: cuidSchema,
+});

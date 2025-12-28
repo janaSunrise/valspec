@@ -4,14 +4,12 @@ import { z } from "zod";
 import { auth } from "@valspec/auth";
 import prisma from "@valspec/db";
 
-import { protectedProcedure } from "../index";
-import { requireEnvAccess, requireProjectAccess } from "../lib/ownership";
-import {
-  apiKeyIdSchema,
-  createApiKeySchema,
-  listApiKeysSchema,
-  type ApiKeyMetadata,
-} from "../schemas/api-key";
+import { protectedProcedure } from "../../procedures";
+import { createAuditLog } from "../../lib/audit";
+import { parseApiKeyMetadata } from "../../lib/metadata";
+import { requireEnvAccess, requireProjectAccess } from "../../lib/ownership";
+import type { ApiKeyMetadata } from "../../schemas/api-key";
+import { apiKeyIdSchema, createApiKeySchema, listApiKeysSchema } from "../../schemas/api-key";
 
 export const apiKeysRouter = {
   list: protectedProcedure.input(listApiKeysSchema).handler(async ({ context, input }) => {
@@ -24,25 +22,13 @@ export const apiKeysRouter = {
 
     const filteredKeys = input.projectId
       ? apiKeys.filter((key) => {
-          if (!key.metadata) return false;
-          try {
-            const metadata = JSON.parse(key.metadata) as ApiKeyMetadata;
-            return metadata.projectId === input.projectId;
-          } catch {
-            return false;
-          }
+          const metadata = parseApiKeyMetadata(key.metadata);
+          return metadata?.projectId === input.projectId;
         })
       : apiKeys;
 
     return filteredKeys.map((key) => {
-      let metadata: ApiKeyMetadata | null = null;
-      if (key.metadata) {
-        try {
-          metadata = JSON.parse(key.metadata) as ApiKeyMetadata;
-        } catch {
-          metadata = null;
-        }
-      }
+      const metadata = parseApiKeyMetadata(key.metadata);
 
       return {
         id: key.id,
@@ -95,6 +81,15 @@ export const apiKeysRouter = {
       });
     }
 
+    await createAuditLog({
+      action: "API_KEY_CREATED",
+      projectId: input.projectId,
+      environmentId: input.environmentId,
+      actorType: "USER",
+      actorUserId: userId,
+      metadata: { name: apiKey.name, keyId: apiKey.id },
+    });
+
     return {
       id: apiKey.id,
       key: apiKey.key,
@@ -121,14 +116,7 @@ export const apiKeysRouter = {
       throw new ORPCError("NOT_FOUND", { message: "API key not found" });
     }
 
-    let metadata: ApiKeyMetadata | null = null;
-    if (apiKey.metadata) {
-      try {
-        metadata = JSON.parse(apiKey.metadata) as ApiKeyMetadata;
-      } catch {
-        metadata = null;
-      }
-    }
+    const metadata = parseApiKeyMetadata(apiKey.metadata);
 
     return {
       id: apiKey.id,
@@ -158,8 +146,19 @@ export const apiKeysRouter = {
       throw new ORPCError("NOT_FOUND", { message: "API key not found" });
     }
 
+    const metadata = parseApiKeyMetadata(apiKey.metadata);
+
     await prisma.apikey.delete({
       where: { id: input.keyId },
+    });
+
+    await createAuditLog({
+      action: "API_KEY_REVOKED",
+      projectId: metadata?.projectId,
+      environmentId: metadata?.environmentId,
+      actorType: "USER",
+      actorUserId: userId,
+      metadata: { name: apiKey.name, keyId: apiKey.id },
     });
 
     return { success: true };
@@ -200,14 +199,7 @@ export const apiKeysRouter = {
         data: updates,
       });
 
-      let metadata: ApiKeyMetadata | null = null;
-      if (apiKey.metadata) {
-        try {
-          metadata = JSON.parse(apiKey.metadata) as ApiKeyMetadata;
-        } catch {
-          metadata = null;
-        }
-      }
+      const metadata = parseApiKeyMetadata(apiKey.metadata);
 
       return {
         id: apiKey.id,

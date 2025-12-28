@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { MoreHorizontal, Pencil, Trash2, Loader2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Loader2, History } from "lucide-react";
+import { Link } from "next-view-transitions";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -105,6 +106,12 @@ export function ProjectActions({ project }: ProjectActionsProps) {
           <DropdownMenuItem onClick={() => setEditOpen(true)}>
             <Pencil className="mr-2 size-4" />
             Edit project
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`/projects/${project.id}/audit`}>
+              <History className="mr-2 size-4" />
+              Activity log
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

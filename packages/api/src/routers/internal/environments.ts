@@ -3,14 +3,14 @@ import { z } from "zod";
 
 import prisma from "@valspec/db";
 
-import { protectedProcedure } from "../index";
-import { requireProjectAccess, requireEnvAccess } from "../lib/ownership";
-import { slugify } from "../lib/utils";
-import { detectCircularInheritance } from "../lib/inheritance";
-import { createEnvironmentSchema, updateEnvironmentSchema } from "../schemas/environment";
-
-const projectIdSchema = z.object({ projectId: z.cuid() });
-const envIdSchema = z.object({ projectId: z.cuid(), envId: z.cuid() });
+import { protectedProcedure } from "../../procedures";
+import { DEFAULT_ENVIRONMENT_COLOR } from "../../constants";
+import { createAuditLog } from "../../lib/audit";
+import { detectCircularInheritance } from "../../lib/inheritance";
+import { requireProjectAccess, requireEnvAccess } from "../../lib/ownership";
+import { slugify } from "../../lib/utils";
+import { createEnvironmentSchema, updateEnvironmentSchema } from "../../schemas/environment";
+import { projectIdSchema, envIdSchema } from "../../schemas";
 
 export const environmentsRouter = {
   list: protectedProcedure
@@ -48,7 +48,7 @@ export const environmentsRouter = {
       await requireProjectAccess(input.projectId, context.session.user.id);
       return next({ context });
     })
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
       const slug = slugify(input.name);
       if (!slug) {
         throw new ORPCError("BAD_REQUEST", { message: "Invalid environment name" });
@@ -80,10 +80,19 @@ export const environmentsRouter = {
         data: {
           name: input.name,
           slug,
-          color: input.color ?? "#6366f1",
+          color: input.color ?? DEFAULT_ENVIRONMENT_COLOR,
           projectId: input.projectId,
           inheritsFromId: input.inheritsFromId ?? null,
         },
+      });
+
+      await createAuditLog({
+        action: "ENVIRONMENT_CREATED",
+        projectId: input.projectId,
+        environmentId: environment.id,
+        actorType: "USER",
+        actorUserId: context.session.user.id,
+        metadata: { name: environment.name },
       });
 
       return environment;
@@ -95,7 +104,7 @@ export const environmentsRouter = {
       await requireEnvAccess(input.projectId, input.envId, context.session.user.id);
       return next({ context });
     })
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
       const updates: {
         name?: string;
         slug?: string;
@@ -175,6 +184,15 @@ export const environmentsRouter = {
         data: updates,
       });
 
+      await createAuditLog({
+        action: "ENVIRONMENT_UPDATED",
+        projectId: input.projectId,
+        environmentId: environment.id,
+        actorType: "USER",
+        actorUserId: context.session.user.id,
+        metadata: { updates },
+      });
+
       return environment;
     }),
 
@@ -184,7 +202,7 @@ export const environmentsRouter = {
       await requireEnvAccess(input.projectId, input.envId, context.session.user.id);
       return next({ context });
     })
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
       // Check if other environments inherit from this one
       const dependents = await prisma.environment.findMany({
         where: { inheritsFromId: input.envId },
@@ -197,8 +215,22 @@ export const environmentsRouter = {
         });
       }
 
+      const environment = await prisma.environment.findUnique({
+        where: { id: input.envId },
+        select: { name: true },
+      });
+
       await prisma.environment.delete({
         where: { id: input.envId },
+      });
+
+      await createAuditLog({
+        action: "ENVIRONMENT_DELETED",
+        projectId: input.projectId,
+        environmentId: input.envId,
+        actorType: "USER",
+        actorUserId: context.session.user.id,
+        metadata: { name: environment?.name },
       });
 
       return { success: true };

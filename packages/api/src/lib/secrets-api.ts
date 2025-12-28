@@ -1,14 +1,13 @@
 import prisma from "@valspec/db";
 
 import type { ApiKeyData } from "../context";
+import { createAuditLog } from "./audit";
 import { decryptSecret, encryptSecret } from "./crypto";
 import { buildInheritanceChain, resolveSecrets } from "./inheritance";
 
 type ValidationError = { error: string; status: number };
 
-async function validateProjectAndEnvironment(
-  apiKey: ApiKeyData,
-): Promise<ValidationError | null> {
+async function validateProjectAndEnvironment(apiKey: ApiKeyData): Promise<ValidationError | null> {
   const { metadata, userId } = apiKey;
 
   const project = await prisma.project.findFirst({
@@ -129,10 +128,20 @@ export async function setSecrets(
         });
       });
 
+      await createAuditLog({
+        action: "SECRET_UPDATED",
+        projectId: metadata.projectId,
+        environmentId: metadata.environmentId,
+        secretId: existing.id,
+        actorType: "API_KEY",
+        actorUserId: apiKey.userId,
+        metadata: { key, version: newVersion },
+      });
+
       updated.push(key);
     } else {
-      await prisma.$transaction(async (tx) => {
-        const newSecret = await tx.secret.create({
+      const newSecret = await prisma.$transaction(async (tx) => {
+        const secret = await tx.secret.create({
           data: {
             key,
             encryptedValue: encrypted.encryptedValue,
@@ -145,7 +154,7 @@ export async function setSecrets(
 
         await tx.secretVersion.create({
           data: {
-            secretId: newSecret.id,
+            secretId: secret.id,
             version: 1,
             encryptedValue: encrypted.encryptedValue,
             iv: encrypted.iv,
@@ -154,6 +163,18 @@ export async function setSecrets(
             changeSource: "API",
           },
         });
+
+        return secret;
+      });
+
+      await createAuditLog({
+        action: "SECRET_CREATED",
+        projectId: metadata.projectId,
+        environmentId: metadata.environmentId,
+        secretId: newSecret.id,
+        actorType: "API_KEY",
+        actorUserId: apiKey.userId,
+        metadata: { key },
       });
 
       created.push(key);

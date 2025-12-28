@@ -6,7 +6,7 @@ import { QueryCache, QueryClient } from "@tanstack/react-query";
 
 import { env } from "@valspec/env/web";
 
-import type { AppRouterClient } from "@valspec/api/routers/index";
+import type { InternalRouterClient } from "@valspec/api/routers/index";
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -39,6 +39,6 @@ export const link = new RPCLink({
   },
 });
 
-export const client: AppRouterClient = createORPCClient(link);
+export const client: InternalRouterClient = createORPCClient(link);
 
 export const orpc = createTanstackQueryUtils(client);

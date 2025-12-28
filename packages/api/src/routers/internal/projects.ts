@@ -3,12 +3,13 @@ import { z } from "zod";
 
 import prisma from "@valspec/db";
 
-import { protectedProcedure } from "../index";
-import { requireProjectAccess, requireProjectWithEnvs } from "../lib/ownership";
-import { slugify } from "../lib/utils";
-import { createProjectSchema, updateProjectSchema } from "../schemas/project";
-
-const projectIdSchema = z.object({ projectId: z.cuid() });
+import { protectedProcedure } from "../../procedures";
+import { DEVELOPMENT_ENV_COLOR } from "../../constants";
+import { createAuditLog } from "../../lib/audit";
+import { requireProjectAccess, requireProjectWithEnvs } from "../../lib/ownership";
+import { slugify } from "../../lib/utils";
+import { createProjectSchema, updateProjectSchema } from "../../schemas/project";
+import { projectIdSchema } from "../../schemas";
 
 export const projectsRouter = {
   list: protectedProcedure.handler(async ({ context }) => {
@@ -66,12 +67,20 @@ export const projectsRouter = {
         data: {
           name: "Development",
           slug: "development",
-          color: "#22c55e",
+          color: DEVELOPMENT_ENV_COLOR,
           projectId: newProject.id,
         },
       });
 
       return newProject;
+    });
+
+    await createAuditLog({
+      action: "PROJECT_CREATED",
+      projectId: project.id,
+      actorType: "USER",
+      actorUserId: context.session.user.id,
+      metadata: { name: project.name },
     });
 
     return project;
@@ -123,6 +132,14 @@ export const projectsRouter = {
         data: updates,
       });
 
+      await createAuditLog({
+        action: "PROJECT_UPDATED",
+        projectId: project.id,
+        actorType: "USER",
+        actorUserId: context.session.user.id,
+        metadata: { updates },
+      });
+
       return project;
     }),
 
@@ -132,9 +149,22 @@ export const projectsRouter = {
       await requireProjectAccess(input.projectId, context.session.user.id);
       return next({ context });
     })
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
+      const project = await prisma.project.findUnique({
+        where: { id: input.projectId },
+        select: { name: true },
+      });
+
       await prisma.project.delete({
         where: { id: input.projectId },
+      });
+
+      await createAuditLog({
+        action: "PROJECT_DELETED",
+        projectId: input.projectId,
+        actorType: "USER",
+        actorUserId: context.session.user.id,
+        metadata: { name: project?.name },
       });
 
       return { success: true };

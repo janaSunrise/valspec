@@ -1,22 +1,12 @@
 import type { RouterClient } from "@orpc/server";
 
-import { publicProcedure } from "../index";
-import { apiKeysRouter } from "./api-keys";
-import { environmentsRouter } from "./environments";
-import { projectsRouter } from "./projects";
-import { secretsRouter } from "./secrets";
-import { versionsRouter } from "./versions";
+import { internalRouter } from "./internal";
+import { apiRouter } from "./api";
 
-export const appRouter = {
-  healthCheck: publicProcedure.handler(() => {
-    return "OK";
-  }),
-  projects: projectsRouter,
-  environments: environmentsRouter,
-  secrets: secretsRouter,
-  versions: versionsRouter,
-  apiKeys: apiKeysRouter,
-};
+export { internalRouter, apiRouter };
 
-export type AppRouter = typeof appRouter;
-export type AppRouterClient = RouterClient<typeof appRouter>;
+export type InternalRouter = typeof internalRouter;
+export type InternalRouterClient = RouterClient<typeof internalRouter>;
+
+export type ApiRouter = typeof apiRouter;
+export type ApiRouterClient = RouterClient<typeof apiRouter>;
