@@ -85,7 +85,7 @@ export function EnvironmentTabs({ projectId, environments, activeEnvId }: Enviro
   const selectedEnv = environments.find((e) => e.id === inheritsFromId);
 
   return (
-    <div className="inline-flex items-center gap-1.5">
+    <div className="inline-flex items-center gap-1 rounded-xl bg-muted/50 p-1">
       {environments.map((env) => {
         const isActive = activeEnvId === env.id;
 
@@ -94,17 +94,23 @@ export function EnvironmentTabs({ projectId, environments, activeEnvId }: Enviro
             key={env.id}
             href={`/projects/${projectId}?env=${env.id}` as Route}
             className={cn(
-              "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-all duration-150",
+              "flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-150",
               isActive
-                ? "bg-background text-foreground shadow-sm ring-1 ring-border"
-                : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             <span
-              className="size-2 rounded-full"
-              style={{ backgroundColor: env.color || "#6366f1" }}
+              className={cn(
+                "size-2 rounded-full transition-shadow duration-150",
+                isActive && "ring-2 ring-offset-1 ring-offset-background",
+              )}
+              style={{
+                backgroundColor: env.color || "#6366f1",
+                boxShadow: isActive ? `0 0 6px ${env.color || "#6366f1"}50` : undefined,
+              }}
             />
-            <span className="font-medium">{env.name}</span>
+            <span>{env.name}</span>
           </Link>
         );
       })}
@@ -113,7 +119,7 @@ export function EnvironmentTabs({ projectId, environments, activeEnvId }: Enviro
         <Tooltip>
           <TooltipTrigger asChild>
             <DialogTrigger asChild>
-              <button className="ml-1 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-all duration-150 hover:bg-background/60 hover:text-foreground">
+              <button className="ml-0.5 flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground">
                 <Plus className="size-4" />
               </button>
             </DialogTrigger>
@@ -164,7 +170,9 @@ export function EnvironmentTabs({ projectId, environments, activeEnvId }: Enviro
                       <span className="flex items-center gap-2">
                         <span
                           className="size-2 rounded-full"
-                          style={{ backgroundColor: selectedEnv.color || "#6366f1" }}
+                          style={{
+                            backgroundColor: selectedEnv.color || "#6366f1",
+                          }}
                         />
                         {selectedEnv.name}
                       </span>

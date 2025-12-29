@@ -175,8 +175,7 @@ export default function AuditPage({ params }: AuditPageProps) {
         )}
       </div>
 
-      {/* Audit Logs */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
         <AuditLogList projectId={projectId} environmentId={envId} action={actionFilter} />
       </div>
     </div>

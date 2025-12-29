@@ -24,12 +24,17 @@ export async function Navbar({ border = true }: NavbarProps) {
   const user = session?.user;
 
   return (
-    <header className={cn("relative z-10", border && "border-b border-border")}>
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+    <header
+      className={cn(
+        "sticky top-0 z-50 backdrop-blur-md bg-background/80",
+        border && "border-b border-border/60",
+      )}
+    >
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Link href={user ? "/dashboard" : "/"}>
           <Logo size="md" />
         </Link>
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-3">
           {user ? (
             <UserMenu user={user} />
           ) : (

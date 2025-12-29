@@ -3,7 +3,7 @@
 import { use, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Loader2, Plus, Frown, Upload, Download } from "lucide-react";
+import { ChevronLeft, Loader2, Plus, Key, Upload, Download } from "lucide-react";
 import { Link } from "next-view-transitions";
 
 import { Button } from "@/components/ui/button";
@@ -120,7 +120,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   // Project has no environments
   if (!project.environments?.length || !activeEnv) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/dashboard">
@@ -138,7 +138,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           <ProjectActions project={project} />
         </div>
 
-        <div className="rounded-lg border border-dashed border-border bg-muted/30 p-8 text-center">
+        <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-8 text-center">
           <p className="text-muted-foreground">No environments found</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Create an environment to start managing secrets
@@ -169,7 +169,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
       </div>
 
       {/* Environment Tabs */}
-      <div className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
+      <div className="flex items-center justify-between">
         <EnvironmentTabs
           projectId={projectId}
           environments={project.environments}
@@ -183,18 +183,22 @@ export default function ProjectPage({ params }: ProjectPageProps) {
       </div>
 
       {/* Secrets */}
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
         {/* Secrets Header */}
-        <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
-          <div>
-            <span className="text-sm font-medium">Secrets</span>
+        <div className="flex items-center justify-between border-b border-border/40 bg-muted/30 px-5 py-3">
+          <div className="flex items-center gap-3">
+            <span className="font-medium">Secrets</span>
             {!secretsLoading && secrets && secrets.length > 0 && (
-              <span className="ml-2 text-xs text-muted-foreground">
-                {ownSecrets}
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
+                  {ownSecrets} own
+                </span>
                 {inheritedSecrets > 0 && (
-                  <span className="text-muted-foreground"> · {inheritedSecrets} inherited</span>
+                  <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                    {inheritedSecrets} inherited
+                  </span>
                 )}
-              </span>
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -206,7 +210,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               <Download className="mr-1.5 size-3.5" />
               Export
             </Button>
-            <Button size="sm" variant="outline" onClick={handleAddSecret}>
+            <Button size="sm" onClick={handleAddSecret}>
               <Plus className="mr-1.5 size-3.5" />
               Add
             </Button>
@@ -219,7 +223,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
         ) : secrets && secrets.length > 0 ? (
-          <div className="divide-y divide-border/50">
+          <div className="divide-y divide-border/40">
             {secrets.map((secret) => (
               <SecretRow
                 key={secret.id}
@@ -233,14 +237,18 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-              <Frown className="size-5 text-muted-foreground" />
+          <div className="flex flex-col items-center justify-center py-14">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <Key className="size-5" />
             </div>
-            <p className="mt-4 text-sm font-medium">No secrets yet</p>
+            <p className="mt-4 font-medium">No secrets yet</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Add your first secret to get started
             </p>
+            <Button className="mt-6" onClick={handleAddSecret}>
+              <Plus className="mr-1.5 size-4" />
+              Add Secret
+            </Button>
           </div>
         )}
       </div>
@@ -270,7 +278,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             <AlertDialogTitle>Delete secret?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete{" "}
-              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs font-medium">
+              <code className="rounded-lg bg-muted px-1.5 py-0.5 font-mono text-xs font-medium">
                 {deletingSecret?.key}
               </code>
               ? This action cannot be undone.

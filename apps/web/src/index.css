@@ -11,12 +11,14 @@
   --popover-foreground: oklch(0.13 0.028 261.692);
   --primary: oklch(0.51 0.23 277);
   --primary-foreground: oklch(0.98 0.01 272);
+  --primary-soft: oklch(0.94 0.04 277);
   --secondary: oklch(0.95 0.005 264);
   --secondary-foreground: oklch(0.25 0.015 264);
   --muted: oklch(0.95 0.005 264);
   --muted-foreground: oklch(0.4 0.02 264);
   --accent: oklch(0.51 0.23 277);
   --accent-foreground: oklch(0.98 0.01 272);
+  --accent-mint: oklch(0.72 0.12 160);
   --destructive: oklch(0.55 0.22 27);
   --border: oklch(0.88 0.01 264);
   --input: oklch(0.88 0.01 264);
@@ -26,7 +28,7 @@
   --chart-3: oklch(0.59 0.2 277);
   --chart-4: oklch(0.51 0.23 277);
   --chart-5: oklch(0.46 0.21 277);
-  --radius: 0.625rem;
+  --radius: 0.75rem;
   --sidebar: oklch(0.98 0.003 264);
   --sidebar-foreground: oklch(0.13 0.028 261.692);
   --sidebar-primary: oklch(0.51 0.23 277);
@@ -48,12 +50,14 @@
   --popover-foreground: oklch(0.985 0.002 247.839);
   --primary: oklch(0.59 0.2 277);
   --primary-foreground: oklch(0.96 0.02 272);
+  --primary-soft: oklch(0.25 0.06 277);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.278 0.033 256.848);
   --muted-foreground: oklch(0.707 0.022 261.325);
   --accent: oklch(0.59 0.2 277);
   --accent-foreground: oklch(0.96 0.02 272);
+  --accent-mint: oklch(0.75 0.1 160);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
@@ -94,12 +98,14 @@
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
+  --color-accent-mint: var(--accent-mint);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -118,13 +124,9 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    @apply border-border outline-ring/50;
-    @apply border-border outline-ring/50;
   }
   body {
     @apply font-sans bg-background text-foreground;
-    @apply bg-background text-foreground;
-    @apply bg-background text-foreground;
   }
   html {
     @apply font-sans;
