@@ -3,9 +3,7 @@
 import { useState } from "react";
 import { Link } from "next-view-transitions";
 import { useTransitionRouter } from "next-view-transitions";
-import { useMutation } from "@tanstack/react-query";
 import { Plus, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,7 +26,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { ColorPicker } from "./color-picker";
-import { client, queryClient } from "@/utils/orpc";
+import { useCreateEnvironment } from "@/mutations";
 
 import type { Route } from "next";
 
@@ -53,20 +51,7 @@ export function EnvironmentTabs({ projectId, environments, activeEnvId }: Enviro
   const [color, setColor] = useState("#3b82f6");
   const [inheritsFromId, setInheritsFromId] = useState<string>("none");
 
-  const createEnvironment = useMutation({
-    mutationFn: (data: { name: string; color: string; inheritsFromId: string | null }) =>
-      client.environments.create({ projectId, ...data }),
-    onSuccess: (env) => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      setOpen(false);
-      resetForm();
-      toast.success("Environment created");
-      router.push(`/projects/${projectId}?env=${env.id}`);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to create environment");
-    },
-  });
+  const createEnvironment = useCreateEnvironment(projectId);
 
   const resetForm = () => {
     setName("");
@@ -76,11 +61,20 @@ export function EnvironmentTabs({ projectId, environments, activeEnvId }: Enviro
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createEnvironment.mutate({
-      name: name.trim(),
-      color,
-      inheritsFromId: inheritsFromId === "none" ? null : inheritsFromId,
-    });
+    createEnvironment.mutate(
+      {
+        name: name.trim(),
+        color,
+        inheritsFromId: inheritsFromId === "none" ? undefined : inheritsFromId,
+      },
+      {
+        onSuccess: (env) => {
+          setOpen(false);
+          resetForm();
+          router.push(`/projects/${projectId}?env=${env.id}`);
+        },
+      },
+    );
   };
 
   const handleOpenChange = (isOpen: boolean) => {

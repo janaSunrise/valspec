@@ -1,6 +1,6 @@
 "use client";
 
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   Loader2,
   FolderPlus,
@@ -19,9 +19,8 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { client } from "@/utils/orpc";
+import { auditQueries } from "@/queries";
 
 type AuditAction =
   | "PROJECT_CREATED"
@@ -114,25 +113,13 @@ function getMetadataDescription(
 interface AuditLogListProps {
   projectId: string;
   environmentId?: string;
-  action?: AuditAction;
+  action?: string;
 }
 
 export function AuditLogList({ projectId, environmentId, action }: AuditLogListProps) {
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteQuery({
-    queryKey: ["audit-logs", projectId, environmentId, action],
-    queryFn: ({ pageParam }) =>
-      client.audit.list({
-        projectId,
-        environmentId,
-        action,
-        limit: 25,
-        cursor: pageParam,
-      }),
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
-  });
-
-  const logs = data?.pages.flatMap((page) => page.logs) ?? [];
+  const { data: logs = [], isLoading } = useQuery(
+    auditQueries.list(projectId, { environmentId, action }),
+  );
 
   if (isLoading) {
     return (
@@ -211,19 +198,6 @@ export function AuditLogList({ projectId, environmentId, action }: AuditLogListP
           </div>
         );
       })}
-
-      {hasNextPage && (
-        <div className="flex justify-center pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-          >
-            {isFetchingNextPage ? <Loader2 className="size-4 animate-spin" /> : "Load more"}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

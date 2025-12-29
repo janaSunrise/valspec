@@ -1,24 +1,25 @@
-import { z } from "zod";
+// Common schemas
+export {
+  colorSchema,
+  secretKeySchema,
+  cuidSchema,
+  projectIdSchema,
+  envIdSchema,
+  secretIdSchema,
+} from "./common";
 
-export const colorSchema = z
-  .string()
-  .regex(/^#[0-9A-Fa-f]{6}$/, "Invalid color format. Must be a hex color like #ffffff");
+// Project
+export { createProjectSchema, updateProjectSchema } from "./project";
+export type { CreateProjectInput, UpdateProjectInput } from "./project";
 
-export const secretKeySchema = z
-  .string()
-  .min(1, "Key is required")
-  .max(100, "Key must be at most 100 characters")
-  .regex(
-    /^[A-Z][A-Z0-9_]*$/,
-    "Key must start with an uppercase letter and contain only uppercase letters, numbers, and underscores",
-  );
+// Environment
+export { createEnvironmentSchema, updateEnvironmentSchema } from "./environment";
+export type { CreateEnvironmentInput, UpdateEnvironmentInput } from "./environment";
 
-export const cuidSchema = z.cuid();
+// Secret
+export { createSecretSchema, updateSecretSchema } from "./secret";
+export type { CreateSecretInput, UpdateSecretInput } from "./secret";
 
-export const projectIdSchema = z.object({ projectId: cuidSchema });
-export const envIdSchema = z.object({ projectId: cuidSchema, envId: cuidSchema });
-export const secretIdSchema = z.object({
-  projectId: cuidSchema,
-  envId: cuidSchema,
-  secretId: cuidSchema,
-});
+// API Key
+export { createApiKeySchema, apiKeyMetadataSchema } from "./api-key";
+export type { ApiKeyPermission, ApiKeyMetadata, CreateApiKeyInput } from "./api-key";

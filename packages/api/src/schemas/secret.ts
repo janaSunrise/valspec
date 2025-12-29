@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { secretKeySchema } from "./index";
+import { secretKeySchema } from "./common";
 
 export const createSecretSchema = z.object({
   key: secretKeySchema,

@@ -2,10 +2,9 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Loader2, Plus, Frown, Upload, Download } from "lucide-react";
 import { Link } from "next-view-transitions";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +24,8 @@ import { SecretDialog } from "@/components/secrets/secret-dialog";
 import { VersionHistory } from "@/components/secrets/version-history";
 import { ExportDialog } from "@/components/secrets/export-dialog";
 import { ImportDialog } from "@/components/secrets/import-dialog";
-import { client, queryClient } from "@/utils/orpc";
+import { projectQueries, secretQueries } from "@/queries";
+import { useDeleteSecret } from "@/mutations";
 
 import type { Secret } from "@/components/secrets/secret-row";
 
@@ -51,10 +51,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     data: project,
     isLoading: projectLoading,
     error: projectError,
-  } = useQuery({
-    queryKey: ["project", projectId],
-    queryFn: () => client.projects.get({ projectId }),
-  });
+  } = useQuery(projectQueries.detail(projectId));
 
   // Determine the active environment
   const activeEnv = useMemo(() => {
@@ -73,27 +70,11 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   }, [project?.environments, envId, projectId, router]);
 
   const { data: secrets, isLoading: secretsLoading } = useQuery({
-    queryKey: ["secrets", projectId, activeEnv?.id],
-    queryFn: () => client.secrets.list({ projectId, envId: activeEnv!.id }),
+    ...secretQueries.list(projectId, activeEnv?.id ?? ""),
     enabled: !!activeEnv,
   });
 
-  const deleteSecret = useMutation({
-    mutationFn: () =>
-      client.secrets.delete({
-        projectId,
-        envId: activeEnv!.id,
-        secretId: deletingSecret!.id,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["secrets", projectId, activeEnv?.id] });
-      toast.success("Secret deleted");
-      setDeletingSecret(null);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to delete secret");
-    },
-  });
+  const deleteSecret = useDeleteSecret(projectId, activeEnv?.id ?? "");
 
   const handleAddSecret = () => {
     setEditingSecret(null);
@@ -299,7 +280,11 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             <AlertDialogCancel disabled={deleteSecret.isPending}>Cancel</AlertDialogCancel>
             <Button
               variant="destructive"
-              onClick={() => deleteSecret.mutate()}
+              onClick={() =>
+                deleteSecret.mutate(deletingSecret!.id, {
+                  onSuccess: () => setDeletingSecret(null),
+                })
+              }
               disabled={deleteSecret.isPending}
             >
               {deleteSecret.isPending ? <Loader2 className="size-4 animate-spin" /> : "Delete"}

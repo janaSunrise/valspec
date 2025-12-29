@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { RotateCcw, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,8 @@ import {
   AlertDialogTitle,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import { client, queryClient } from "@/utils/orpc";
+import { versionQueries } from "@/queries";
+import { useRollbackSecret } from "@/mutations";
 
 import type { Secret } from "./secret-row";
 
@@ -65,36 +65,11 @@ export function VersionHistory({
   const sourceEnvId = secret?.sourceEnvironmentId ?? envId;
 
   const { data: versions, isLoading } = useQuery({
-    queryKey: ["versions", projectId, sourceEnvId, secret?.id],
-    queryFn: () =>
-      client.versions.list({
-        projectId,
-        envId: sourceEnvId,
-        secretId: secret!.id,
-      }),
+    ...versionQueries.list(projectId, sourceEnvId, secret?.id ?? ""),
     enabled: open && !!secret,
   });
 
-  const rollback = useMutation({
-    mutationFn: (versionId: string) =>
-      client.versions.rollback({
-        projectId,
-        envId: sourceEnvId,
-        secretId: secret!.id,
-        versionId,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["secrets", projectId, envId] });
-      queryClient.invalidateQueries({ queryKey: ["versions", projectId, sourceEnvId, secret?.id] });
-      queryClient.invalidateQueries({ queryKey: ["secret-value"] });
-      toast.success(`Restored to v${rollbackVersion}`);
-      setRollbackVersionId(null);
-      setRollbackVersion(null);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to restore version");
-    },
-  });
+  const rollback = useRollbackSecret(projectId, sourceEnvId, secret?.id ?? "");
 
   const handleRollbackClick = (versionId: string, version: number) => {
     setRollbackVersionId(versionId);
@@ -103,7 +78,12 @@ export function VersionHistory({
 
   const confirmRollback = () => {
     if (rollbackVersionId) {
-      rollback.mutate(rollbackVersionId);
+      rollback.mutate(rollbackVersionId, {
+        onSuccess: () => {
+          setRollbackVersionId(null);
+          setRollbackVersion(null);
+        },
+      });
     }
   };
 

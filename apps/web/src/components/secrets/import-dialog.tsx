@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { Upload, FileText, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,7 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { client, queryClient } from "@/utils/orpc";
+import { useImportSecrets } from "@/mutations";
 
 interface ImportDialogProps {
   open: boolean;
@@ -32,35 +31,7 @@ export function ImportDialog({ open, onOpenChange, projectId, envId, envName }: 
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const importSecrets = useMutation({
-    mutationFn: () =>
-      client.secrets.import({
-        projectId,
-        envId,
-        content,
-        overwrite,
-      }),
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["secrets", projectId, envId] });
-
-      const parts: string[] = [];
-      if (result.created.length > 0) {
-        parts.push(`${result.created.length} created`);
-      }
-      if (result.updated.length > 0) {
-        parts.push(`${result.updated.length} updated`);
-      }
-      if (result.skipped.length > 0) {
-        parts.push(`${result.skipped.length} skipped`);
-      }
-
-      toast.success(`Import complete: ${parts.join(", ")}`);
-      handleClose();
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to import secrets");
-    },
-  });
+  const importSecrets = useImportSecrets(projectId, envId);
 
   const handleClose = () => {
     setContent("");
@@ -217,7 +188,7 @@ export function ImportDialog({ open, onOpenChange, projectId, envId, envName }: 
             Cancel
           </Button>
           <Button
-            onClick={() => importSecrets.mutate()}
+            onClick={() => importSecrets.mutate({ content, overwrite }, { onSuccess: handleClose })}
             disabled={!content || importSecrets.isPending}
           >
             {importSecrets.isPending ? (

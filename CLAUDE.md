@@ -12,9 +12,9 @@ Valspec uses:
 
 - NextJS with shadcn for frontend
 - Elysia for backend
+- Eden for type-safe APIs
 - Prisma for database ORM
 - PostgreSQL with docker for the database
-- oRPC for type-safe API communication
 - Better Auth for authentication
 - Bun as the runtime and package manager
 - Oxlint and Oxfmt for code quality

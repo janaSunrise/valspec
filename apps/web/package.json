@@ -5,16 +5,14 @@
   "scripts": {
     "dev": "next dev --port 3001",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@orpc/client": "catalog:",
-    "@orpc/server": "catalog:",
-    "@orpc/tanstack-query": "^1.12.2",
+    "@elysiajs/eden": "catalog:",
     "@prisma/client": "catalog:",
     "@tanstack/react-form": "^1.27.6",
     "@tanstack/react-query": "^5.90.12",
-    "@tanstack/zod-form-adapter": "^0.42.1",
     "@valspec/api": "workspace:*",
     "@valspec/auth": "workspace:*",
     "@valspec/env": "workspace:*",
@@ -31,6 +29,7 @@
     "next": "^16.1.0",
     "next-themes": "^0.4.6",
     "next-view-transitions": "^0.3.5",
+    "nuqs": "^2.8.6",
     "radix-ui": "^1.4.3",
     "react": "^19.2.3",
     "react-day-picker": "^9.13.0",

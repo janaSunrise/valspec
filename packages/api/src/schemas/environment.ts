@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { colorSchema, cuidSchema } from "./index";
+import { colorSchema, cuidSchema } from "./common";
 
 export const createEnvironmentSchema = z.object({
   name: z.string().min(1, "Name is required").max(50),

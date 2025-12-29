@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useTransitionRouter } from "next-view-transitions";
-import { useMutation } from "@tanstack/react-query";
 import { MoreHorizontal, Pencil, Trash2, Loader2 } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { ColorPicker } from "./color-picker";
-import { client, queryClient } from "@/utils/orpc";
+import { useUpdateEnvironment, useDeleteEnvironment } from "@/mutations";
 
 interface Environment {
   id: string;
@@ -70,7 +68,6 @@ export function EnvironmentActions({
     environment.inheritsFromId || "none",
   );
 
-  // Sync form state when environment prop changes
   useEffect(() => {
     setName(environment.name);
     setColor(environment.color || "#6366f1");
@@ -79,35 +76,8 @@ export function EnvironmentActions({
 
   const selectedEnv = environments.find((e) => e.id === inheritsFromId);
 
-  const updateEnvironment = useMutation({
-    mutationFn: (data: { name?: string; color?: string; inheritsFromId?: string | null }) =>
-      client.environments.update({ projectId, envId: environment.id, ...data }),
-    onSuccess: (updated) => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["secrets", projectId, environment.id] });
-      setEditOpen(false);
-      toast.success("Environment updated");
-      router.push(`/projects/${projectId}?env=${updated.id}`);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to update environment");
-    },
-  });
-
-  const deleteEnvironment = useMutation({
-    mutationFn: () => client.environments.delete({ projectId, envId: environment.id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
-      setDeleteOpen(false);
-      toast.success("Environment deleted");
-      // Redirect to project page without env param - will auto-select first env
-      router.push(`/projects/${projectId}`);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to delete environment");
-      setDeleteOpen(false);
-    },
-  });
+  const updateEnvironment = useUpdateEnvironment(projectId, environment.id);
+  const deleteEnvironmentMutation = useDeleteEnvironment(projectId);
 
   // Filter out current environment and any that inherit from it (to prevent cycles)
   const availableParents = environments.filter((env) => {
@@ -124,15 +94,28 @@ export function EnvironmentActions({
 
   const handleEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateEnvironment.mutate({
-      name: name.trim(),
-      color,
-      inheritsFromId: inheritsFromId === "none" ? null : inheritsFromId,
-    });
+    updateEnvironment.mutate(
+      {
+        name: name.trim(),
+        color,
+        inheritsFromId: inheritsFromId === "none" ? null : inheritsFromId,
+      },
+      {
+        onSuccess: (updated) => {
+          setEditOpen(false);
+          router.push(`/projects/${projectId}?env=${updated.id}`);
+        },
+      },
+    );
   };
 
   const handleDelete = () => {
-    deleteEnvironment.mutate();
+    deleteEnvironmentMutation.mutate(environment.id, {
+      onSuccess: () => {
+        setDeleteOpen(false);
+        router.push(`/projects/${projectId}`);
+      },
+    });
   };
 
   const handleEditOpenChange = (isOpen: boolean) => {
@@ -261,13 +244,19 @@ export function EnvironmentActions({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteEnvironment.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteEnvironmentMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
             <Button
               onClick={handleDelete}
-              disabled={deleteEnvironment.isPending}
+              disabled={deleteEnvironmentMutation.isPending}
               variant="destructive"
             >
-              {deleteEnvironment.isPending ? <Loader2 className="size-4 animate-spin" /> : "Delete"}
+              {deleteEnvironmentMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                "Delete"
+              )}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

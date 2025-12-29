@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import { use, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AuditLogList } from "@/components/audit/audit-log-list";
-import { client } from "@/utils/orpc";
+import { projectQueries } from "@/queries";
 
 type AuditAction =
   | "PROJECT_CREATED"
@@ -63,10 +64,7 @@ export default function AuditPage({ params }: AuditPageProps) {
     data: project,
     isLoading: projectLoading,
     error: projectError,
-  } = useQuery({
-    queryKey: ["project", projectId],
-    queryFn: () => client.projects.get({ projectId }),
-  });
+  } = useQuery(projectQueries.detail(projectId));
 
   const environments = useMemo(() => project?.environments ?? [], [project?.environments]);
 
@@ -90,7 +88,7 @@ export default function AuditPage({ params }: AuditPageProps) {
     }
 
     const queryString = params.toString();
-    router.push(`/projects/${projectId}/audit${queryString ? `?${queryString}` : ""}`);
+    router.push(`/projects/${projectId}/audit${queryString ? `?${queryString}` : ""}` as Route);
   };
 
   if (projectLoading) {
@@ -119,7 +117,7 @@ export default function AuditPage({ params }: AuditPageProps) {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href={`/projects/${projectId}`}>
+        <Link href={`/projects/${projectId}` as Route}>
           <Button variant="ghost" size="icon-sm">
             <ChevronLeft className="size-4" />
           </Button>
