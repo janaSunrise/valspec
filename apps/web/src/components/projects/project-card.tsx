@@ -40,10 +40,10 @@ export function ProjectCard({ project }: ProjectCardProps) {
           <h3 className="truncate text-lg font-semibold tracking-tight transition-colors duration-200 group-hover:text-primary">
             {project.name}
           </h3>
-          <p className="mt-1.5 truncate font-mono text-sm text-muted-foreground">{project.slug}</p>
+          <p className="mt-2 truncate font-mono text-sm text-muted-foreground">{project.slug}</p>
         </Link>
 
-        <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+        <div className="flex items-center gap-2 transition-opacity duration-200">
           <ProjectActions project={project} />
         </div>
       </div>
