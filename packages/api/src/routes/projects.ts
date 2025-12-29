@@ -17,7 +17,10 @@ export const projectRoutes = new Elysia({ prefix: "/projects" })
       where: { userId: session.user.id },
       include: {
         _count: { select: { environments: true } },
-        environments: { select: { id: true, name: true, slug: true }, orderBy: { createdAt: "asc" } },
+        environments: {
+          select: { id: true, name: true, slug: true },
+          orderBy: { createdAt: "asc" },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -38,7 +41,10 @@ export const projectRoutes = new Elysia({ prefix: "/projects" })
     async ({ session, body, status }) => {
       const validation = createProjectSchema.safeParse(body);
       if (!validation.success) {
-        throw status(400, { code: "BAD_REQUEST", message: validation.error.issues[0]?.message ?? "Invalid input" });
+        throw status(400, {
+          code: "BAD_REQUEST",
+          message: validation.error.issues[0]?.message ?? "Invalid input",
+        });
       }
 
       const { name, description } = validation.data;
@@ -46,14 +52,20 @@ export const projectRoutes = new Elysia({ prefix: "/projects" })
       if (!slug) throw status(400, { code: "BAD_REQUEST", message: "Invalid project name" });
 
       const existing = await prisma.project.findFirst({ where: { userId: session.user.id, slug } });
-      if (existing) throw status(409, { code: "CONFLICT", message: "Project with this name already exists" });
+      if (existing)
+        throw status(409, { code: "CONFLICT", message: "Project with this name already exists" });
 
       const project = await prisma.$transaction(async (tx) => {
         const newProject = await tx.project.create({
           data: { name, slug, description: description ?? null, userId: session.user.id },
         });
         await tx.environment.create({
-          data: { name: "Development", slug: "development", color: DEVELOPMENT_ENV_COLOR, projectId: newProject.id },
+          data: {
+            name: "Development",
+            slug: "development",
+            color: DEVELOPMENT_ENV_COLOR,
+            projectId: newProject.id,
+          },
         });
         return newProject;
       });
@@ -79,7 +91,10 @@ export const projectRoutes = new Elysia({ prefix: "/projects" })
 
       const validation = updateProjectSchema.safeParse(body);
       if (!validation.success) {
-        throw status(400, { code: "BAD_REQUEST", message: validation.error.issues[0]?.message ?? "Invalid input" });
+        throw status(400, {
+          code: "BAD_REQUEST",
+          message: validation.error.issues[0]?.message ?? "Invalid input",
+        });
       }
 
       const input = validation.data;
@@ -92,7 +107,8 @@ export const projectRoutes = new Elysia({ prefix: "/projects" })
         const existing = await prisma.project.findFirst({
           where: { userId: session.user.id, slug: newSlug, NOT: { id: params.projectId } },
         });
-        if (existing) throw status(409, { code: "CONFLICT", message: "Project with this name already exists" });
+        if (existing)
+          throw status(409, { code: "CONFLICT", message: "Project with this name already exists" });
 
         updates.name = input.name;
         updates.slug = newSlug;
@@ -106,7 +122,10 @@ export const projectRoutes = new Elysia({ prefix: "/projects" })
         throw status(400, { code: "BAD_REQUEST", message: "No valid fields to update" });
       }
 
-      const updated = await prisma.project.update({ where: { id: params.projectId }, data: updates });
+      const updated = await prisma.project.update({
+        where: { id: params.projectId },
+        data: updates,
+      });
 
       await createAuditLog({
         action: "PROJECT_UPDATED",
@@ -120,7 +139,10 @@ export const projectRoutes = new Elysia({ prefix: "/projects" })
     },
     {
       params: t.Object({ projectId: t.String() }),
-      body: t.Object({ name: t.Optional(t.String()), description: t.Optional(t.Union([t.String(), t.Null()])) }),
+      body: t.Object({
+        name: t.Optional(t.String()),
+        description: t.Optional(t.Union([t.String(), t.Null()])),
+      }),
     },
   )
 

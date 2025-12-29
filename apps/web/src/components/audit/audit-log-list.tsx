@@ -51,7 +51,10 @@ interface AuditLog {
   createdAt: Date;
 }
 
-const ACTION_CONFIG: Record<AuditAction, { label: string; icon: React.ElementType; color: string }> = {
+const ACTION_CONFIG: Record<
+  AuditAction,
+  { label: string; icon: React.ElementType; color: string }
+> = {
   PROJECT_CREATED: { label: "Project created", icon: FolderPlus, color: "text-emerald-500" },
   PROJECT_UPDATED: { label: "Project updated", icon: FolderPen, color: "text-blue-500" },
   PROJECT_DELETED: { label: "Project deleted", icon: FolderX, color: "text-red-500" },
@@ -81,7 +84,10 @@ function formatRelativeTime(date: Date): string {
   return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function getMetadataDescription(action: AuditAction, metadata: Record<string, unknown> | null): string | null {
+function getMetadataDescription(
+  action: AuditAction,
+  metadata: Record<string, unknown> | null,
+): string | null {
   if (!metadata) return null;
 
   switch (action) {
@@ -111,7 +117,9 @@ interface AuditLogListProps {
 }
 
 export function AuditLogList({ projectId, environmentId, action }: AuditLogListProps) {
-  const { data: logs = [], isLoading } = useQuery(auditQueries.list(projectId, { environmentId, action }));
+  const { data: logs = [], isLoading } = useQuery(
+    auditQueries.list(projectId, { environmentId, action }),
+  );
 
   if (isLoading) {
     return (
@@ -128,7 +136,9 @@ export function AuditLogList({ projectId, environmentId, action }: AuditLogListP
           <Eye className="size-5 text-muted-foreground" />
         </div>
         <p className="mt-4 text-sm font-medium">No activity yet</p>
-        <p className="mt-1 text-sm text-muted-foreground">Actions in this project will appear here</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Actions in this project will appear here
+        </p>
       </div>
     );
   }
@@ -141,8 +151,16 @@ export function AuditLogList({ projectId, environmentId, action }: AuditLogListP
         const description = getMetadataDescription(log.action, log.metadata);
 
         return (
-          <div key={log.id} className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50">
-            <div className={cn("mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted", config.color)}>
+          <div
+            key={log.id}
+            className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/50"
+          >
+            <div
+              className={cn(
+                "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted",
+                config.color,
+              )}
+            >
               <Icon className="size-3.5" />
             </div>
 
@@ -150,13 +168,19 @@ export function AuditLogList({ projectId, environmentId, action }: AuditLogListP
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium">{config.label}</span>
                 {description && (
-                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{description}</code>
+                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+                    {description}
+                  </code>
                 )}
               </div>
 
               <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  {log.actorType === "USER" ? <User className="size-3" /> : <Bot className="size-3" />}
+                  {log.actorType === "USER" ? (
+                    <User className="size-3" />
+                  ) : (
+                    <Bot className="size-3" />
+                  )}
                   {log.actorType === "USER" ? "User" : "API Key"}
                 </span>
                 {log.environmentName && (

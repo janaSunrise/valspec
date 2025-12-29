@@ -19,7 +19,12 @@ export async function getEnvironment(projectId: string, envId: string, userId: s
   });
 }
 
-export async function getSecret(projectId: string, envId: string, secretId: string, userId: string) {
+export async function getSecret(
+  projectId: string,
+  envId: string,
+  secretId: string,
+  userId: string,
+) {
   return prisma.secret.findFirst({
     where: {
       id: secretId,

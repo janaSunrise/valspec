@@ -5,13 +5,20 @@ import prisma from "@valspec/db";
 import { getSecret } from "../lib/ownership";
 import { sessionAuth } from "../plugins/session-auth";
 
-export const versionRoutes = new Elysia({ prefix: "/projects/:projectId/environments/:envId/secrets/:secretId/versions" })
+export const versionRoutes = new Elysia({
+  prefix: "/projects/:projectId/environments/:envId/secrets/:secretId/versions",
+})
   .use(sessionAuth)
 
   .get(
     "/",
     async ({ session, params, status }) => {
-      const secret = await getSecret(params.projectId, params.envId, params.secretId, session.user.id);
+      const secret = await getSecret(
+        params.projectId,
+        params.envId,
+        params.secretId,
+        session.user.id,
+      );
       if (!secret) throw status(404, { code: "NOT_FOUND", message: "Secret not found" });
 
       return prisma.secretVersion.findMany({
@@ -26,7 +33,12 @@ export const versionRoutes = new Elysia({ prefix: "/projects/:projectId/environm
   .post(
     "/:versionId/rollback",
     async ({ session, params, status }) => {
-      const secret = await getSecret(params.projectId, params.envId, params.secretId, session.user.id);
+      const secret = await getSecret(
+        params.projectId,
+        params.envId,
+        params.secretId,
+        session.user.id,
+      );
       if (!secret) throw status(404, { code: "NOT_FOUND", message: "Secret not found" });
 
       const targetVersion = await prisma.secretVersion.findFirst({
@@ -43,10 +55,23 @@ export const versionRoutes = new Elysia({ prefix: "/projects/:projectId/environm
       const updated = await prisma.$transaction(async (tx) => {
         const s = await tx.secret.update({
           where: { id: params.secretId },
-          data: { encryptedValue: targetVersion.encryptedValue, iv: targetVersion.iv, authTag: targetVersion.authTag, version: newVersion },
+          data: {
+            encryptedValue: targetVersion.encryptedValue,
+            iv: targetVersion.iv,
+            authTag: targetVersion.authTag,
+            version: newVersion,
+          },
         });
         await tx.secretVersion.create({
-          data: { secretId: params.secretId, version: newVersion, encryptedValue: targetVersion.encryptedValue, iv: targetVersion.iv, authTag: targetVersion.authTag, changeType: "ROLLBACK", changeSource: "WEB" },
+          data: {
+            secretId: params.secretId,
+            version: newVersion,
+            encryptedValue: targetVersion.encryptedValue,
+            iv: targetVersion.iv,
+            authTag: targetVersion.authTag,
+            changeType: "ROLLBACK",
+            changeSource: "WEB",
+          },
         });
         return s;
       });
@@ -61,5 +86,12 @@ export const versionRoutes = new Elysia({ prefix: "/projects/:projectId/environm
         rolledBackToVersion: targetVersion.version,
       };
     },
-    { params: t.Object({ projectId: t.String(), envId: t.String(), secretId: t.String(), versionId: t.String() }) },
+    {
+      params: t.Object({
+        projectId: t.String(),
+        envId: t.String(),
+        secretId: t.String(),
+        versionId: t.String(),
+      }),
+    },
   );

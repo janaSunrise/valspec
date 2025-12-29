@@ -20,7 +20,10 @@ export const environmentQueries = {
     queryOptions({
       queryKey: [...environmentQueries.all(projectId), envId],
       queryFn: async () => {
-        const { data, error } = await api.internal.projects({ projectId }).environments({ envId }).get();
+        const { data, error } = await api.internal
+          .projects({ projectId })
+          .environments({ envId })
+          .get();
         if (error) throw new Error(error.value.message);
         return data;
       },

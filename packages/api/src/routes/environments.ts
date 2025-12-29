@@ -45,19 +45,31 @@ export const environmentRoutes = new Elysia({ prefix: "/projects/:projectId/envi
 
       const validation = createEnvironmentSchema.safeParse(body);
       if (!validation.success) {
-        throw status(400, { code: "BAD_REQUEST", message: validation.error.issues[0]?.message ?? "Invalid input" });
+        throw status(400, {
+          code: "BAD_REQUEST",
+          message: validation.error.issues[0]?.message ?? "Invalid input",
+        });
       }
 
       const { name, color, inheritsFromId } = validation.data;
       const slug = slugify(name);
       if (!slug) throw status(400, { code: "BAD_REQUEST", message: "Invalid environment name" });
 
-      const existing = await prisma.environment.findFirst({ where: { projectId: params.projectId, slug } });
-      if (existing) throw status(409, { code: "CONFLICT", message: "Environment with this name already exists" });
+      const existing = await prisma.environment.findFirst({
+        where: { projectId: params.projectId, slug },
+      });
+      if (existing)
+        throw status(409, {
+          code: "CONFLICT",
+          message: "Environment with this name already exists",
+        });
 
       if (inheritsFromId) {
-        const parent = await prisma.environment.findFirst({ where: { id: inheritsFromId, projectId: params.projectId } });
-        if (!parent) throw status(400, { code: "BAD_REQUEST", message: "Invalid inheritance target" });
+        const parent = await prisma.environment.findFirst({
+          where: { id: inheritsFromId, projectId: params.projectId },
+        });
+        if (!parent)
+          throw status(400, { code: "BAD_REQUEST", message: "Invalid inheritance target" });
       }
 
       const environment = await prisma.environment.create({
@@ -99,20 +111,33 @@ export const environmentRoutes = new Elysia({ prefix: "/projects/:projectId/envi
 
       const validation = updateEnvironmentSchema.safeParse(body);
       if (!validation.success) {
-        throw status(400, { code: "BAD_REQUEST", message: validation.error.issues[0]?.message ?? "Invalid input" });
+        throw status(400, {
+          code: "BAD_REQUEST",
+          message: validation.error.issues[0]?.message ?? "Invalid input",
+        });
       }
 
       const input = validation.data;
-      const updates: { name?: string; slug?: string; color?: string; inheritsFromId?: string | null } = {};
+      const updates: {
+        name?: string;
+        slug?: string;
+        color?: string;
+        inheritsFromId?: string | null;
+      } = {};
 
       if (input.name !== undefined) {
         const newSlug = slugify(input.name);
-        if (!newSlug) throw status(400, { code: "BAD_REQUEST", message: "Invalid environment name" });
+        if (!newSlug)
+          throw status(400, { code: "BAD_REQUEST", message: "Invalid environment name" });
 
         const existing = await prisma.environment.findFirst({
           where: { projectId: params.projectId, slug: newSlug, NOT: { id: params.envId } },
         });
-        if (existing) throw status(409, { code: "CONFLICT", message: "Environment with this name already exists" });
+        if (existing)
+          throw status(409, {
+            code: "CONFLICT",
+            message: "Environment with this name already exists",
+          });
 
         updates.name = input.name;
         updates.slug = newSlug;
@@ -125,13 +150,17 @@ export const environmentRoutes = new Elysia({ prefix: "/projects/:projectId/envi
           updates.inheritsFromId = null;
         } else {
           if (input.inheritsFromId === params.envId) {
-            throw status(400, { code: "BAD_REQUEST", message: "Environment cannot inherit from itself" });
+            throw status(400, {
+              code: "BAD_REQUEST",
+              message: "Environment cannot inherit from itself",
+            });
           }
 
           const parent = await prisma.environment.findFirst({
             where: { id: input.inheritsFromId, projectId: params.projectId },
           });
-          if (!parent) throw status(400, { code: "BAD_REQUEST", message: "Invalid inheritance target" });
+          if (!parent)
+            throw status(400, { code: "BAD_REQUEST", message: "Invalid inheritance target" });
 
           const allEnvs = await prisma.environment.findMany({
             where: { projectId: params.projectId },
@@ -149,7 +178,10 @@ export const environmentRoutes = new Elysia({ prefix: "/projects/:projectId/envi
         throw status(400, { code: "BAD_REQUEST", message: "No valid fields to update" });
       }
 
-      const environment = await prisma.environment.update({ where: { id: params.envId }, data: updates });
+      const environment = await prisma.environment.update({
+        where: { id: params.envId },
+        data: updates,
+      });
 
       await createAuditLog({
         action: "ENVIRONMENT_UPDATED",

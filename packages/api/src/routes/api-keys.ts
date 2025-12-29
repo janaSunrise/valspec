@@ -45,7 +45,9 @@ export const apiKeyRoutes = new Elysia({ prefix: "/api-keys" })
   .get(
     "/:keyId",
     async ({ session, params, status }) => {
-      const apiKey = await prisma.apikey.findFirst({ where: { id: params.keyId, userId: session.user.id } });
+      const apiKey = await prisma.apikey.findFirst({
+        where: { id: params.keyId, userId: session.user.id },
+      });
       if (!apiKey) throw status(404, { code: "NOT_FOUND", message: "API key not found" });
 
       const metadata = parseApiKeyMetadata(apiKey.metadata);
@@ -69,7 +71,10 @@ export const apiKeyRoutes = new Elysia({ prefix: "/api-keys" })
     async ({ session, body, status }) => {
       const validation = createApiKeySchema.safeParse(body);
       if (!validation.success) {
-        throw status(400, { code: "BAD_REQUEST", message: validation.error.issues[0]?.message ?? "Invalid input" });
+        throw status(400, {
+          code: "BAD_REQUEST",
+          message: validation.error.issues[0]?.message ?? "Invalid input",
+        });
       }
 
       const input = validation.data;
@@ -100,7 +105,8 @@ export const apiKeyRoutes = new Elysia({ prefix: "/api-keys" })
         },
       });
 
-      if (!apiKey) throw status(500, { code: "INTERNAL_ERROR", message: "Failed to create API key" });
+      if (!apiKey)
+        throw status(500, { code: "INTERNAL_ERROR", message: "Failed to create API key" });
 
       await createAuditLog({
         action: "API_KEY_CREATED",
@@ -138,7 +144,9 @@ export const apiKeyRoutes = new Elysia({ prefix: "/api-keys" })
   .patch(
     "/:keyId",
     async ({ session, params, body, status }) => {
-      const existing = await prisma.apikey.findFirst({ where: { id: params.keyId, userId: session.user.id } });
+      const existing = await prisma.apikey.findFirst({
+        where: { id: params.keyId, userId: session.user.id },
+      });
       if (!existing) throw status(404, { code: "NOT_FOUND", message: "API key not found" });
 
       const updates: { name?: string; enabled?: boolean } = {};
@@ -173,7 +181,9 @@ export const apiKeyRoutes = new Elysia({ prefix: "/api-keys" })
   .delete(
     "/:keyId",
     async ({ session, params, status }) => {
-      const apiKey = await prisma.apikey.findFirst({ where: { id: params.keyId, userId: session.user.id } });
+      const apiKey = await prisma.apikey.findFirst({
+        where: { id: params.keyId, userId: session.user.id },
+      });
       if (!apiKey) throw status(404, { code: "NOT_FOUND", message: "API key not found" });
 
       const metadata = parseApiKeyMetadata(apiKey.metadata);

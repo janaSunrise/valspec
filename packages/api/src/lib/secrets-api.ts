@@ -26,19 +26,36 @@ export async function getSecrets(apiKey: ApiKeyContext): Promise<Record<string, 
   const chain = buildInheritanceChain(metadata.environmentId, environments);
   const secrets = await prisma.secret.findMany({
     where: { environmentId: { in: chain } },
-    select: { id: true, key: true, encryptedValue: true, iv: true, authTag: true, version: true, environmentId: true, createdAt: true, updatedAt: true },
+    select: {
+      id: true,
+      key: true,
+      encryptedValue: true,
+      iv: true,
+      authTag: true,
+      version: true,
+      environmentId: true,
+      createdAt: true,
+      updatedAt: true,
+    },
   });
 
   const resolved = resolveSecrets(metadata.environmentId, environments, secrets);
   const result: Record<string, string> = {};
   for (const secret of resolved) {
-    result[secret.key] = await decryptSecret({ encryptedValue: secret.encryptedValue, iv: secret.iv, authTag: secret.authTag });
+    result[secret.key] = await decryptSecret({
+      encryptedValue: secret.encryptedValue,
+      iv: secret.iv,
+      authTag: secret.authTag,
+    });
   }
 
   return result;
 }
 
-export async function setSecrets(apiKey: ApiKeyContext, secrets: Record<string, string>): Promise<{ updated: string[]; created: string[] }> {
+export async function setSecrets(
+  apiKey: ApiKeyContext,
+  secrets: Record<string, string>,
+): Promise<{ updated: string[]; created: string[] }> {
   const { metadata, userId } = apiKey;
 
   if (!metadata.permissions.includes("write") && !metadata.permissions.includes("admin")) {
@@ -60,17 +77,32 @@ export async function setSecrets(apiKey: ApiKeyContext, secrets: Record<string, 
 
   for (const [key, value] of Object.entries(secrets)) {
     const encrypted = await encryptSecret(value);
-    const existing = await prisma.secret.findFirst({ where: { environmentId: metadata.environmentId, key } });
+    const existing = await prisma.secret.findFirst({
+      where: { environmentId: metadata.environmentId, key },
+    });
 
     if (existing) {
       const newVersion = existing.version + 1;
       await prisma.$transaction(async (tx) => {
         await tx.secret.update({
           where: { id: existing.id },
-          data: { encryptedValue: encrypted.encryptedValue, iv: encrypted.iv, authTag: encrypted.authTag, version: newVersion },
+          data: {
+            encryptedValue: encrypted.encryptedValue,
+            iv: encrypted.iv,
+            authTag: encrypted.authTag,
+            version: newVersion,
+          },
         });
         await tx.secretVersion.create({
-          data: { secretId: existing.id, version: newVersion, encryptedValue: encrypted.encryptedValue, iv: encrypted.iv, authTag: encrypted.authTag, changeType: "UPDATED", changeSource: "API" },
+          data: {
+            secretId: existing.id,
+            version: newVersion,
+            encryptedValue: encrypted.encryptedValue,
+            iv: encrypted.iv,
+            authTag: encrypted.authTag,
+            changeType: "UPDATED",
+            changeSource: "API",
+          },
         });
       });
 
@@ -87,10 +119,25 @@ export async function setSecrets(apiKey: ApiKeyContext, secrets: Record<string, 
     } else {
       const newSecret = await prisma.$transaction(async (tx) => {
         const secret = await tx.secret.create({
-          data: { key, encryptedValue: encrypted.encryptedValue, iv: encrypted.iv, authTag: encrypted.authTag, version: 1, environmentId: metadata.environmentId! },
+          data: {
+            key,
+            encryptedValue: encrypted.encryptedValue,
+            iv: encrypted.iv,
+            authTag: encrypted.authTag,
+            version: 1,
+            environmentId: metadata.environmentId!,
+          },
         });
         await tx.secretVersion.create({
-          data: { secretId: secret.id, version: 1, encryptedValue: encrypted.encryptedValue, iv: encrypted.iv, authTag: encrypted.authTag, changeType: "CREATED", changeSource: "API" },
+          data: {
+            secretId: secret.id,
+            version: 1,
+            encryptedValue: encrypted.encryptedValue,
+            iv: encrypted.iv,
+            authTag: encrypted.authTag,
+            changeType: "CREATED",
+            changeSource: "API",
+          },
         });
         return secret;
       });

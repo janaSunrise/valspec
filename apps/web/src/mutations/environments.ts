@@ -55,7 +55,10 @@ export function useDeleteEnvironment(projectId: string) {
 
   return useMutation({
     mutationFn: async (envId: string) => {
-      const { data, error } = await api.internal.projects({ projectId }).environments({ envId }).delete();
+      const { data, error } = await api.internal
+        .projects({ projectId })
+        .environments({ envId })
+        .delete();
       if (error) throw new Error(getErrorMessage(error));
       return data;
     },

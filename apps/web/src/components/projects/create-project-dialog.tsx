@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
-import { createProjectSchema } from "@valspec/api";
+import { createProjectSchema } from "@valspec/api/schemas";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

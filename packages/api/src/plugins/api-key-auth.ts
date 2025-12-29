@@ -22,12 +22,15 @@ function parseMetadata(raw: unknown): ApiKeyMetadata | null {
   return {
     projectId: obj.projectId,
     environmentId: typeof obj.environmentId === "string" ? obj.environmentId : undefined,
-    permissions: Array.isArray(obj.permissions) ? obj.permissions.filter((p) => typeof p === "string") : [],
+    permissions: Array.isArray(obj.permissions)
+      ? obj.permissions.filter((p) => typeof p === "string")
+      : [],
   };
 }
 
-export const apiKeyAuth = new Elysia({ name: "api-key-auth" })
-  .derive({ as: "scoped" }, async ({ request, status }) => {
+export const apiKeyAuth = new Elysia({ name: "api-key-auth" }).derive(
+  { as: "scoped" },
+  async ({ request, status }) => {
     const header = request.headers.get("x-api-key");
     if (!header) {
       throw status(401, { code: "UNAUTHORIZED", message: "API key required" });
@@ -60,4 +63,5 @@ export const apiKeyAuth = new Elysia({ name: "api-key-auth" })
         metadata,
       } as ApiKeyContext,
     };
-  });
+  },
+);

@@ -16,7 +16,9 @@ export const auditRoutes = new Elysia({ prefix: "/projects/:projectId/audit" })
 
       const { environmentId, action, limit = 100 } = query;
 
-      const where: { projectId: string; environmentId?: string; action?: AuditAction } = { projectId: params.projectId };
+      const where: { projectId: string; environmentId?: string; action?: AuditAction } = {
+        projectId: params.projectId,
+      };
       if (environmentId) where.environmentId = environmentId;
       if (action && Object.values(AuditAction).includes(action as AuditAction)) {
         where.action = action as AuditAction;
