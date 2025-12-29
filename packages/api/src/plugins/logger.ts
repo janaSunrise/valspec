@@ -3,30 +3,52 @@ import pino from "pino";
 
 import { env } from "@valspec/env/server";
 
+const isDev = env.NODE_ENV === "development";
+
 export const logger = pino({
-  level: env.NODE_ENV === "development" ? "debug" : "info",
-  transport:
-    env.NODE_ENV === "development"
-      ? {
-          target: "pino-pretty",
-          options: { colorize: true, translateTime: "SYS:standard", ignore: "pid,hostname" },
-        }
-      : undefined,
+  level: isDev ? "info" : "info",
+  transport: isDev
+    ? {
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+          translateTime: "SYS:HH:MM:ss",
+          ignore: "pid,hostname,method,path,status,duration,err",
+          messageFormat: "{method} {path} {status} {duration}ms",
+          customColors: "info:cyan,warn:yellow,error:red",
+          singleLine: true,
+        },
+      }
+    : undefined,
 });
 
+const requestTimes = new WeakMap<Request, number>();
+
 export const loggerPlugin = new Elysia({ name: "logger" })
-  .onRequest(({ request }) => {
-    logger.debug({ method: request.method, path: new URL(request.url).pathname }, "request");
+  .derive({ as: "global" }, ({ request }) => {
+    requestTimes.set(request, performance.now());
+    return {};
   })
-  .onAfterResponse(({ request, set }) => {
-    logger.info(
-      { method: request.method, path: new URL(request.url).pathname, status: set.status },
-      "response",
-    );
+  .onAfterHandle({ as: "global" }, ({ request, set }) => {
+    const start = requestTimes.get(request);
+    const duration = start ? Math.round(performance.now() - start) : 0;
+    const path = new URL(request.url).pathname;
+    const status = typeof set.status === "number" ? set.status : 200;
+
+    const data = { method: request.method, path, status, duration };
+
+    if (status >= 500) logger.error(data);
+    else if (status >= 400) logger.warn(data);
+    else logger.info(data);
   })
-  .onError(({ error, request }) => {
-    logger.error(
-      { method: request.method, path: new URL(request.url).pathname, error: String(error) },
-      "error",
-    );
+  .onError({ as: "global" }, ({ error, request, set }) => {
+    const start = requestTimes.get(request);
+    const duration = start ? Math.round(performance.now() - start) : 0;
+    const path = new URL(request.url).pathname;
+    const status = typeof set.status === "number" ? set.status : 500;
+
+    const data = { method: request.method, path, status, duration, err: String(error) };
+
+    if (status >= 500) logger.error(data);
+    else logger.warn(data);
   });
