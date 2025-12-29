@@ -1,10 +1,9 @@
 "use client";
 
+import type { Route } from "next";
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { MoreHorizontal, Pencil, Trash2, Loader2, History } from "lucide-react";
 import { Link } from "next-view-transitions";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +31,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
-import { client, queryClient } from "@/utils/orpc";
+import { useUpdateProject, useDeleteProject } from "@/mutations";
 
 interface ProjectActionsProps {
   project: {
@@ -48,42 +47,19 @@ export function ProjectActions({ project }: ProjectActionsProps) {
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description || "");
 
-  const updateProject = useMutation({
-    mutationFn: (data: { name?: string; description?: string | null }) =>
-      client.projects.update({ projectId: project.id, ...data }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setEditOpen(false);
-      toast.success("Project updated");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to update project");
-    },
-  });
-
-  const deleteProject = useMutation({
-    mutationFn: () => client.projects.delete({ projectId: project.id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setDeleteOpen(false);
-      toast.success("Project deleted");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to delete project");
-      setDeleteOpen(false);
-    },
-  });
+  const updateProject = useUpdateProject(project.id);
+  const deleteProjectMutation = useDeleteProject();
 
   const handleEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateProject.mutate({
-      name: name.trim(),
-      description: description.trim() || null,
-    });
+    updateProject.mutate(
+      { name: name.trim(), description: description.trim() || null },
+      { onSuccess: () => setEditOpen(false) },
+    );
   };
 
   const handleDelete = () => {
-    deleteProject.mutate();
+    deleteProjectMutation.mutate(project.id, { onSuccess: () => setDeleteOpen(false) });
   };
 
   const handleEditOpenChange = (open: boolean) => {
@@ -108,7 +84,7 @@ export function ProjectActions({ project }: ProjectActionsProps) {
             Edit project
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href={`/projects/${project.id}/audit`}>
+            <Link href={`/projects/${project.id}/audit` as Route}>
               <History className="mr-2 size-4" />
               Activity log
             </Link>
@@ -179,9 +155,17 @@ export function ProjectActions({ project }: ProjectActionsProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteProject.isPending}>Cancel</AlertDialogCancel>
-            <Button onClick={handleDelete} disabled={deleteProject.isPending} variant="destructive">
-              {deleteProject.isPending ? <Loader2 className="size-4 animate-spin" /> : "Delete"}
+            <AlertDialogCancel disabled={deleteProjectMutation.isPending}>Cancel</AlertDialogCancel>
+            <Button
+              onClick={handleDelete}
+              disabled={deleteProjectMutation.isPending}
+              variant="destructive"
+            >
+              {deleteProjectMutation.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                "Delete"
+              )}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

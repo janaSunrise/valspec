@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Key, Plus, Loader2, MoreHorizontal, Trash2, Copy, Check, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -42,7 +42,8 @@ import {
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { client, queryClient } from "@/utils/orpc";
+import { apiKeyQueries, projectQueries } from "@/queries";
+import { useCreateApiKey, useDeleteApiKey } from "@/mutations";
 
 type Permission = "read" | "write" | "admin";
 
@@ -73,15 +74,8 @@ interface Project {
 export function UserApiKeys() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  const { data: apiKeys, isLoading } = useQuery({
-    queryKey: ["apiKeys"],
-    queryFn: () => client.apiKeys.list({}),
-  });
-
-  const { data: projects } = useQuery({
-    queryKey: ["projects", "list"],
-    queryFn: () => client.projects.list(),
-  });
+  const { data: apiKeys, isLoading } = useQuery(apiKeyQueries.list());
+  const { data: projects } = useQuery(projectQueries.list());
 
   if (isLoading) {
     return (
@@ -135,17 +129,7 @@ export function UserApiKeys() {
 function ApiKeyRow({ apiKey, projects }: { apiKey: ApiKey; projects: Project[] }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const revokeApiKey = useMutation({
-    mutationFn: () => client.apiKeys.revoke({ keyId: apiKey.id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["apiKeys"] });
-      toast.success("API key revoked");
-      setDeleteOpen(false);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to revoke API key");
-    },
-  });
+  const revokeApiKey = useDeleteApiKey();
 
   const project = projects.find((p) => p.id === apiKey.metadata?.projectId);
   const environment = project?.environments?.find((e) => e.id === apiKey.metadata?.environmentId);
@@ -231,7 +215,9 @@ function ApiKeyRow({ apiKey, projects }: { apiKey: ApiKey; projects: Project[] }
             <AlertDialogCancel disabled={revokeApiKey.isPending}>Cancel</AlertDialogCancel>
             <Button
               variant="destructive"
-              onClick={() => revokeApiKey.mutate()}
+              onClick={() =>
+                revokeApiKey.mutate(apiKey.id, { onSuccess: () => setDeleteOpen(false) })
+              }
               disabled={revokeApiKey.isPending}
             >
               {revokeApiKey.isPending ? <Loader2 className="size-4 animate-spin" /> : "Revoke"}
@@ -287,24 +273,7 @@ function CreateApiKeyDialog({
     }
   };
 
-  const createApiKey = useMutation({
-    mutationFn: () =>
-      client.apiKeys.create({
-        name: name.trim(),
-        projectId,
-        environmentId: environmentId || undefined,
-        permissions,
-        expiresIn: expiresIn === "never" ? undefined : parseInt(expiresIn, 10),
-      }),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["apiKeys"] });
-      setCreatedKey(data.key);
-      toast.success("API key created");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to create API key");
-    },
-  });
+  const createApiKey = useCreateApiKey();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -312,7 +281,16 @@ function CreateApiKeyDialog({
       toast.error("Please select an environment");
       return;
     }
-    createApiKey.mutate();
+    createApiKey.mutate(
+      {
+        name: name.trim(),
+        projectId,
+        environmentId: environmentId || undefined,
+        permissions,
+        expiresIn: expiresIn === "never" ? undefined : parseInt(expiresIn, 10),
+      },
+      { onSuccess: (data) => setCreatedKey(data.key) },
+    );
   };
 
   const handleCopy = async () => {

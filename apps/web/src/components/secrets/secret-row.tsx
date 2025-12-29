@@ -13,7 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { client } from "@/utils/orpc";
+import { api } from "@/lib/api";
+import { secretQueries } from "@/queries";
 
 export interface Secret {
   id: string;
@@ -48,8 +49,7 @@ export function SecretRow({
   const sourceEnvId = secret.sourceEnvironmentId ?? envId;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["secret-value", projectId, sourceEnvId, secret.id],
-    queryFn: () => client.secrets.get({ projectId, envId: sourceEnvId, secretId: secret.id }),
+    ...secretQueries.detail(projectId, sourceEnvId, secret.id),
     enabled: isRevealed,
     staleTime: 30000,
   });
@@ -58,16 +58,18 @@ export function SecretRow({
     try {
       let value = data?.value;
       if (!value) {
-        const fetched = await client.secrets.get({
-          projectId,
-          envId: sourceEnvId,
-          secretId: secret.id,
-        });
-        value = fetched.value;
+        const result = await api.internal
+          .projects({ projectId })
+          .environments({ envId: sourceEnvId })
+          .secrets({ secretId: secret.id })
+          .get();
+        if (!result.error) value = result.data.value;
       }
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      if (value) {
+        await navigator.clipboard.writeText(value);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }
     } catch {
       // Silent fail
     }

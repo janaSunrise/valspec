@@ -6,13 +6,10 @@ import { FolderOpen } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateProjectDialog } from "@/components/projects/create-project-dialog";
 import { ProjectCard } from "@/components/projects/project-card";
-import { client } from "@/utils/orpc";
+import { projectQueries } from "@/queries";
 
 export default function DashboardPage() {
-  const { data: projects, isLoading } = useQuery({
-    queryKey: ["projects", "list"],
-    queryFn: () => client.projects.list(),
-  });
+  const { data: projects, isLoading } = useQuery(projectQueries.list());
 
   return (
     <>

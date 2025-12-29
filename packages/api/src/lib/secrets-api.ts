@@ -1,130 +1,76 @@
 import prisma from "@valspec/db";
 
-import type { ApiKeyData } from "../context";
+import type { ApiKeyContext } from "../plugins/api-key-auth";
 import { createAuditLog } from "./audit";
 import { decryptSecret, encryptSecret } from "./crypto";
 import { buildInheritanceChain, resolveSecrets } from "./inheritance";
 
-type ValidationError = { error: string; status: number };
-
-async function validateProjectAndEnvironment(apiKey: ApiKeyData): Promise<ValidationError | null> {
+export async function getSecrets(apiKey: ApiKeyContext): Promise<Record<string, string>> {
   const { metadata, userId } = apiKey;
 
-  const project = await prisma.project.findFirst({
-    where: { id: metadata.projectId, userId },
-  });
+  const project = await prisma.project.findFirst({ where: { id: metadata.projectId, userId } });
+  if (!project) throw new Error("Project not found");
 
-  if (!project) {
-    return { error: "Project not found", status: 404 };
-  }
-
-  if (!metadata.environmentId) {
-    return { error: "API key must be scoped to an environment", status: 400 };
-  }
+  if (!metadata.environmentId) throw new Error("API key must be scoped to an environment");
 
   const environment = await prisma.environment.findFirst({
     where: { id: metadata.environmentId, projectId: metadata.projectId },
   });
-
-  if (!environment) {
-    return { error: "Environment not found", status: 404 };
-  }
-
-  return null;
-}
-
-export async function getSecrets(
-  apiKey: ApiKeyData,
-): Promise<{ data: Record<string, string> } | ValidationError> {
-  const validationError = await validateProjectAndEnvironment(apiKey);
-  if (validationError) return validationError;
-
-  const { metadata } = apiKey;
+  if (!environment) throw new Error("Environment not found");
 
   const environments = await prisma.environment.findMany({
     where: { projectId: metadata.projectId },
     select: { id: true, name: true, inheritsFromId: true },
   });
 
-  const chain = buildInheritanceChain(metadata.environmentId!, environments);
-
+  const chain = buildInheritanceChain(metadata.environmentId, environments);
   const secrets = await prisma.secret.findMany({
     where: { environmentId: { in: chain } },
-    select: {
-      id: true,
-      key: true,
-      encryptedValue: true,
-      iv: true,
-      authTag: true,
-      version: true,
-      environmentId: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+    select: { id: true, key: true, encryptedValue: true, iv: true, authTag: true, version: true, environmentId: true, createdAt: true, updatedAt: true },
   });
 
-  const resolved = resolveSecrets(metadata.environmentId!, environments, secrets);
-
+  const resolved = resolveSecrets(metadata.environmentId, environments, secrets);
   const result: Record<string, string> = {};
   for (const secret of resolved) {
-    const decrypted = await decryptSecret({
-      encryptedValue: secret.encryptedValue,
-      iv: secret.iv,
-      authTag: secret.authTag,
-    });
-    result[secret.key] = decrypted;
+    result[secret.key] = await decryptSecret({ encryptedValue: secret.encryptedValue, iv: secret.iv, authTag: secret.authTag });
   }
 
-  return { data: result };
+  return result;
 }
 
-export async function setSecrets(
-  apiKey: ApiKeyData,
-  secrets: Record<string, string>,
-): Promise<{ data: { updated: string[]; created: string[] } } | ValidationError> {
-  const { metadata, permissions } = apiKey;
+export async function setSecrets(apiKey: ApiKeyContext, secrets: Record<string, string>): Promise<{ updated: string[]; created: string[] }> {
+  const { metadata, userId } = apiKey;
 
-  if (!permissions.includes("write") && !permissions.includes("admin")) {
-    return { error: "Insufficient permissions", status: 403 };
+  if (!metadata.permissions.includes("write") && !metadata.permissions.includes("admin")) {
+    throw new Error("Insufficient permissions");
   }
 
-  const validationError = await validateProjectAndEnvironment(apiKey);
-  if (validationError) return validationError;
+  const project = await prisma.project.findFirst({ where: { id: metadata.projectId, userId } });
+  if (!project) throw new Error("Project not found");
+
+  if (!metadata.environmentId) throw new Error("API key must be scoped to an environment");
+
+  const environment = await prisma.environment.findFirst({
+    where: { id: metadata.environmentId, projectId: metadata.projectId },
+  });
+  if (!environment) throw new Error("Environment not found");
 
   const updated: string[] = [];
   const created: string[] = [];
 
   for (const [key, value] of Object.entries(secrets)) {
     const encrypted = await encryptSecret(value);
-
-    const existing = await prisma.secret.findFirst({
-      where: { environmentId: metadata.environmentId, key },
-    });
+    const existing = await prisma.secret.findFirst({ where: { environmentId: metadata.environmentId, key } });
 
     if (existing) {
       const newVersion = existing.version + 1;
-
       await prisma.$transaction(async (tx) => {
         await tx.secret.update({
           where: { id: existing.id },
-          data: {
-            encryptedValue: encrypted.encryptedValue,
-            iv: encrypted.iv,
-            authTag: encrypted.authTag,
-            version: newVersion,
-          },
+          data: { encryptedValue: encrypted.encryptedValue, iv: encrypted.iv, authTag: encrypted.authTag, version: newVersion },
         });
-
         await tx.secretVersion.create({
-          data: {
-            secretId: existing.id,
-            version: newVersion,
-            encryptedValue: encrypted.encryptedValue,
-            iv: encrypted.iv,
-            authTag: encrypted.authTag,
-            changeType: "UPDATED",
-            changeSource: "API",
-          },
+          data: { secretId: existing.id, version: newVersion, encryptedValue: encrypted.encryptedValue, iv: encrypted.iv, authTag: encrypted.authTag, changeType: "UPDATED", changeSource: "API" },
         });
       });
 
@@ -134,36 +80,18 @@ export async function setSecrets(
         environmentId: metadata.environmentId,
         secretId: existing.id,
         actorType: "API_KEY",
-        actorUserId: apiKey.userId,
+        actorUserId: userId,
         metadata: { key, version: newVersion },
       });
-
       updated.push(key);
     } else {
       const newSecret = await prisma.$transaction(async (tx) => {
         const secret = await tx.secret.create({
-          data: {
-            key,
-            encryptedValue: encrypted.encryptedValue,
-            iv: encrypted.iv,
-            authTag: encrypted.authTag,
-            version: 1,
-            environmentId: metadata.environmentId!,
-          },
+          data: { key, encryptedValue: encrypted.encryptedValue, iv: encrypted.iv, authTag: encrypted.authTag, version: 1, environmentId: metadata.environmentId! },
         });
-
         await tx.secretVersion.create({
-          data: {
-            secretId: secret.id,
-            version: 1,
-            encryptedValue: encrypted.encryptedValue,
-            iv: encrypted.iv,
-            authTag: encrypted.authTag,
-            changeType: "CREATED",
-            changeSource: "API",
-          },
+          data: { secretId: secret.id, version: 1, encryptedValue: encrypted.encryptedValue, iv: encrypted.iv, authTag: encrypted.authTag, changeType: "CREATED", changeSource: "API" },
         });
-
         return secret;
       });
 
@@ -173,13 +101,12 @@ export async function setSecrets(
         environmentId: metadata.environmentId,
         secretId: newSecret.id,
         actorType: "API_KEY",
-        actorUserId: apiKey.userId,
+        actorUserId: userId,
         metadata: { key },
       });
-
       created.push(key);
     }
   }
 
-  return { data: { updated, created } };
+  return { updated, created };
 }

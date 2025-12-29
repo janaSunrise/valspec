@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +14,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
-import { client, queryClient } from "@/utils/orpc";
+import { secretQueries } from "@/queries";
+import { useCreateSecret, useUpdateSecret } from "@/mutations";
 
 import type { Secret } from "./secret-row";
 
@@ -36,9 +36,8 @@ export function SecretDialog({ open, onOpenChange, projectId, envId, secret }: S
 
   // Fetch current value when editing
   const { data: secretData, isLoading: isFetchingValue } = useQuery({
-    queryKey: ["secret-value", projectId, envId, secret?.id],
-    queryFn: () => client.secrets.get({ projectId, envId, secretId: secret!.id }),
-    enabled: open && isEditing,
+    ...secretQueries.detail(projectId, envId, secret?.id ?? ""),
+    enabled: open && isEditing && !!secret?.id,
   });
 
   // Reset form when dialog opens/closes or secret changes
@@ -62,39 +61,15 @@ export function SecretDialog({ open, onOpenChange, projectId, envId, secret }: S
     }
   }, [secretData]);
 
-  const createSecret = useMutation({
-    mutationFn: (data: { key: string; value: string }) =>
-      client.secrets.create({ projectId, envId, ...data }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["secrets", projectId, envId] });
-      toast.success("Secret created");
-      onOpenChange(false);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to create secret");
-    },
-  });
-
-  const updateSecret = useMutation({
-    mutationFn: (data: { value: string }) =>
-      client.secrets.update({ projectId, envId, secretId: secret!.id, ...data }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["secrets", projectId, envId] });
-      queryClient.invalidateQueries({ queryKey: ["secret-value", projectId, envId, secret?.id] });
-      toast.success("Secret updated");
-      onOpenChange(false);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to update secret");
-    },
-  });
+  const createSecret = useCreateSecret(projectId, envId);
+  const updateSecret = useUpdateSecret(projectId, envId, secret?.id ?? "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isEditing) {
-      updateSecret.mutate({ value });
+      updateSecret.mutate({ value }, { onSuccess: () => onOpenChange(false) });
     } else {
-      createSecret.mutate({ key: key.trim(), value });
+      createSecret.mutate({ key: key.trim(), value }, { onSuccess: () => onOpenChange(false) });
     }
   };
 

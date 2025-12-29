@@ -11,16 +11,14 @@
   },
   "scripts": {},
   "dependencies": {
-    "@orpc/client": "catalog:",
-    "@orpc/openapi": "catalog:",
-    "@orpc/server": "catalog:",
-    "@orpc/zod": "catalog:",
     "@valspec/auth": "workspace:*",
     "@valspec/db": "workspace:*",
     "@valspec/env": "workspace:*",
     "@valspec/security": "workspace:*",
     "dotenv": "catalog:",
     "elysia": "catalog:",
+    "pino": "catalog:",
+    "pino-pretty": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

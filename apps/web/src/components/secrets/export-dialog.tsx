@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { client } from "@/utils/orpc";
+import { secretQueries } from "@/queries";
 
 interface ExportDialogProps {
   open: boolean;
@@ -27,8 +27,7 @@ export function ExportDialog({ open, onOpenChange, projectId, envId, envName }: 
   const [copied, setCopied] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["secrets-export", projectId, envId],
-    queryFn: () => client.secrets.export({ projectId, envId }),
+    ...secretQueries.export(projectId, envId),
     enabled: open,
   });
 

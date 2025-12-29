@@ -3,10 +3,6 @@
     "shadcn": {
       "command": "npx",
       "args": ["shadcn@latest", "mcp"]
-    },
-    "superpowers": {
-      "command": "npx",
-      "args": ["superpowers@superpowers-marketplace"]
     }
   }
 }
